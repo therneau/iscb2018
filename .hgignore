@@ -3,6 +3,9 @@
 .*\.toc$
 .*\.vrb$
 .*\.aux$
+.*\.out$
+.*\.pdf$
+.*\.log$
 .*\.R$
 test.Rnw
 proposal

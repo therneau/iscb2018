@@ -25,13 +25,14 @@ load("nafld.rda")
       risen to 24\%.
     \item Most common cause of chronic liver disease.
     \item Diagnosed with abdominal elastography.
-    \item NASH = NAFLD + inflammation requires biopsy.
+    \item NASH = NAFLD + inflammation requires biopsy for diagnosis.
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Study}
   \begin{itemize}
     \item All NAFLD diagnosis from 1997 to 2014 in Olmsted County, Minnesota.
+    \item Utilize the Rochester Epidemiology Project
     \item One year delay.
     \item 4 controls matched on age and sex, then followed forward until the
     analysis date. 
@@ -62,6 +63,8 @@ statefig(cbind(4,1), cmat)
       selected tests and clinical observations.
     \item \code{nafld3}: Variables of id, days, and event type.  One observation
       for each outcome: occurence of NASH, of hypertension, diabetes, etc.
+    \item To anonymize patients, all dates have been replaced with ``days
+      since first enrollment''.  
   \end{itemize}
 \end{frame}
 
@@ -74,10 +77,22 @@ statefig(cbind(4,1), cmat)
   \end{itemize}
 \end{frame}  
 
-\begin{frame}[fragile]
-  \frametitle{R code}
-<<echo=TRUE>>=
-data1 <- tmerge(nafld1[, 1:6], nafld1, id,  death= event(futime, status))
+\begin{frame}{tmerge}
+<<tmerge>>=
+frame()
+plot(c(0, 75), c(0,2), xlab="Time", ylab="", yaxt='n', type='n')
+segments(c(10, 26, 34), c(1,1,1), c(18, 31, 65), c(1,1,1), lwd=2)
+arrows(c(5, 15, 21, 26, 31, 70), rep(c(1.4, .6), 3), c(5, 15, 21, 26, 31, 70),
+       rep(c(1.05, .95), 3), angle=20, length=.1)
+text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
+     c("early", "within", "gap", "leading", "trailing", "late"))
+@ 
+\end{frame}
+
+\begin{frame}[fragile]{R code}
+<<echo=TRUE, size='scriptsize'>>=
+data1 <- tmerge(nafld1[, 1:6], nafld1, id,  
+                death= event(futime, status))
 data1 <- tmerge(data1, subset(nafld3, event=="nafld"), id,
                 nafld = tdc(days))
 data1 <- tmerge(data1, subset(nafld3, event=="diabetes"), id,
@@ -92,12 +107,11 @@ attr(data1, 'tcount')
 
 \begin{frame}[fragile] 
   \frametitle{Four row subject}
-<<row4a>>= 
+<<row4a, echo=TRUE>>= 
 rowcount <- table(data1$id)
 table(rowcount)    # pick someone with 4 rows
-id4 <- as.numeric(names(rowcount)[rowcount==4])
-subset(data1, id == id4[1], c(id, age, tstart, tstop, nafld,
-                             htn, diabetes, dyslipid, death))
+subset(data1, id == 17, c(id, age, tstart, tstop, nafld,
+                     htn, diabetes, dyslipid, death))
 @
 \end{frame}
 
@@ -105,7 +119,7 @@ subset(data1, id == id4[1], c(id, age, tstart, tstop, nafld,
   \begin{itemize}
     \item The first call creates a time window for each subject.
       \begin{itemize}
-        \item For subject 17, this is (0, 4596), ending with a death.
+        \item For subject 17, this is (0, 4596), ending with death/censored
         \item More complex time windows are supported.
       \end{itemize}
     \item Each subsequent call, and each term within a call, sequentially
@@ -126,7 +140,7 @@ subset(nafld3, id==17)
 \end{frame}
 
 \begin{frame}[fragile]
-<<row4b>>=
+<<row4b, echo=TRUE, size="small">>=
 test <- tmerge(nafld1[, 1:2], nafld1, id,
                death = event(futime, status))
 attr(test, "tcount")
@@ -136,7 +150,7 @@ subset(test, id==17)
 \end{frame}
 
 \begin{frame}[fragile]
-<<row4c>>=
+<<row4c, echo=TRUE, size="small">>=
 test <- tmerge(nafld1[, 1:2], nafld1, id, 
                death = event(futime, status))
 test <- tmerge(test, subset(nafld3, event=="nafld"), id,
@@ -149,13 +163,14 @@ subset(test, id==17)
 \end{frame}
 
 \begin{frame}[fragile]
-<<row4d>>=
+\small
+<<row4d, echo=TRUE, size="small">>=
 test <- tmerge(nafld1[, 1:2], nafld1, id, 
                death = event(futime, status))
 test <- tmerge(test, subset(nafld3, event=="nafld"), id,
-               nafld = tdc(days))
+               naf = tdc(days))
 test <- tmerge(test, subset(nafld3, event=="diabetes"), id,
-                diabetes= tdc(days), e1= event(days))
+                diab= tdc(days), e1= event(days))
 attr(test, "tcount")
 #
 subset(test, id==17)
@@ -163,9 +178,9 @@ subset(test, id==17)
 \end{frame}
 
 \begin{frame}[fragile]
-<<row4e>>=
+<<row4e, echo=TRUE, size="small">>=
 test <- tmerge(test, subset(nafld3, event=="htn"), id,
-                htn= tdc(days), e2= event(days))
+                htn= tdc(days))
 attr(test, "tcount")
 #
 subset(test, id==17)
@@ -173,9 +188,9 @@ subset(test, id==17)
 \end{frame}
 
 \begin{frame}[fragile]
-<<row4f>>=
+<<row4f, echo=TRUE, size="small">>=
 test <- tmerge(test, subset(nafld3, event=="dyslipidemia"), id,
-                dyslipid= tdc(days), e3= event(days))
+                lip= tdc(days), e3= event(days))
 attr(test, "tcount")
 #
 subset(test, id==17)
@@ -184,8 +199,9 @@ subset(test, id==17)
 
 \begin{frame}{Data}
   \begin{itemize}
-    \item Use any software you want, the key is correct \emph{data}.
-    \item Rules
+    \item Use any software you want to create the data set, 
+      the key is correct \emph{data}.
+    \item Internal rules for \code{tmerge} 
       \begin{itemize}
         \item If a covariate changes at time $t$, its new value only affects
           events that happen after time $t$, not at or before $t$. 
@@ -209,7 +225,6 @@ subset(test, id==17)
     P. Diconis and Mosteller, Method of studying coincidences, JASA 1989.
   \end{quote}
   
-  \pause
   \begin{itemize}
     \item Someone \emph{will} die on the same day as their diabetes diagnosis,
       or any number of other overlaps.
@@ -220,47 +235,55 @@ subset(test, id==17)
 
 \begin{frame}[fragile]
   \frametitle{Last additions}
-<<row4g, echo=TRUE>>=
+  \begin{itemize}
+    \item \code{age1}, \code{age2}: age at start and end of interval
+    \item \code{mcount}: number of metabolic conditions so far
+    \item \code{mstate}: censor, 1mc, 2mc, 3mc, death
+  \end{itemize}
+<<row4g>>=
 data1$age1 <- with(data1, age + tstart/365.25)
 data1$age2 <- with(data1, age + tstop/365.25)
 data1$mcount <- with(data1, diabetes + htn + dyslipid)
 tcount <- with(data1, e1 + e2 + e3)
 temp <- with(data1, ifelse(death, 4, 
-                           ifelse(tcount ==0, 0, mcount+ tcount)))
+              ifelse(tcount ==0, 0, mcount+ tcount)))
 data1$mstate <- factor(temp, 0:4, 
-                       c("censored", "1cm", "2cm", "3cm", "death"))
-with(data1, table(mcount, mstate, nafld))
+         c("censored", "1mc", "2mc", "3mc", "death"))
+with(data1, table(mcount, mstate))
 @ 
 \end{frame}
 
 \begin{frame}
   \begin{itemize}
-    \item Why so much time on data? 
+    \item Why so much time on the data? 
     \item Print out and READ selected subjects from the final result
     \item If the data set is right, all that follows is easy
     \item If it is wrong, the answers sometimes don't show it
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Fits}
-<<mfit1>>=
-nfit3 <- coxph(Surv(age1, age2, death) ~ male + strata(mcount)/nafld,
-                data=data1)
-nfit4a <- coxph(Surv(age1, age2, mstate=="1cm") ~ male + nafld,
+\begin{frame}[fragile]{Fits}
+<<mfit1, echo=TRUE, size="small">>=
+nfit1 <- coxph(Surv(age1, age2, death) ~ male + nafld,
+               data=data1)
+nfit2 <- coxph(Surv(age1, age2, death) ~ male + nafld + mcount,
+               data=data1)
+nfit3 <- coxph(Surv(age1, age2, death) ~ male + 
+                   strata(mcount)/nafld,  data= data1)
+nfit4a <- coxph(Surv(age1, age2, mstate=="1mc") ~ male + nafld,
                data=data1, subset= (mcount==0))
-nfit4b <- coxph(Surv(age1, age2, mstate=="2cm") ~ male + nafld,
+nfit4b <- coxph(Surv(age1, age2, mstate=="2mc") ~ male + nafld,
                data=data1, subset= (mcount<2))
-nfit4c <- coxph(Surv(age1, age2, mstate=="3cm") ~ male + nafld,
+nfit4c <- coxph(Surv(age1, age2, mstate=="3mc") ~ male + nafld,
                data=data1, subset= (mcount<3))
 @ 
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
 <<mfit1b>>=
 mtable <- matrix(NA, 2, 4)
 dimnames(mtable) <- list(c("metabolic", "death"),
-                         c("0cm","1cm", "2cm", "3cm"))
+                         c("0mc","1mc", "2mc", "3mc"))
 mtable[1,1:3] <- c(coef(nfit4a)[2], coef(nfit4b)[2], coef(nfit4c)[2])
 mtable[2,1:4] <- coef(nfit3)[2:5]
 
@@ -273,27 +296,27 @@ print(round(exp(mtable), 2), naprint="")
   \end{itemize}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
 <<mfig>>=
-istate <- factor(data1$mcount, 0:3, c('0cm', '1cm', '2cm', '3cm'))
+istate <- factor(data1$mcount, 0:3, c('0mc', '1mc', '2mc', '3mc'))
 fakeid <- data1$id + data1$nafld/2
 mfig <- survfit(Surv(age1, age2, mstate) ~ nafld, data=data1,
                 istate=istate, id=fakeid, se=FALSE, start.time=50)
 plot(mfig, lty=1:2, col=rep(c(3,5,4,1,2), each=2), yscale=100,
      xlab="Age", ylab="P(state)")
-legend(55, .95, c("0 cm", "1 cm", "2 cm", "3 cm", "Dead"), lty=1, 
+legend(55, .95, c("0 mc", "1 mc", "2 mc", "3 mc", "Dead"), lty=1, 
        lwd=2, col=c(2,3,5,4,1))
 @ 
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Mean years in state, starting at age 50}
+\begin{frame}[fragile]{Mean years in state, starting at age 50}
 <<mfig2>>=
 tmat <- matrix(summary(mfig, rmean=100)$table[,"rmean"], 2, 5)
 dimnames(tmat) <- list(c("Control", "NAFLD"), 
-                       c("1 cm", "2 cm", "3 cm", "Death", "0 cm"))
+                       c("1 mc", "2 mc", "3 mc", "Death", "0 mc"))
 t2 <- tmat[,c(5,1,2,3)]
 t2 <- cbind(t2, Total =rowSums(t2))
 round(t2, 1)
 @ 
 \end{frame}
+
