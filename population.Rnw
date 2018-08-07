@@ -1,0 +1,157 @@
+\section{Important side topics}
+\subsection{Population averages}
+
+\begin{frame}
+  {\Large Population averages}
+\end{frame}
+
+\begin{frame}{Issue}
+  \begin{itemize}
+   \item Natural summaries
+    \begin{itemize}
+      \item transition rate $\lambda_{jk}$ from state $j$ to state $k$
+      \item $p(t)$, the probablility-in-state vector
+      \item $E_j(t)$, expected amount of time in state $j$
+      \item $v_j(t)$, expected number of visits to state $j$ (lifetime risk)
+    \end{itemize}
+    \item Hazard models for $\lambda$ are natural
+    \item Coefficients from the hazard models do not translate in a simple
+      way to the other summaries.
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Fundamental Issue}
+  We are infatuated with simplicity.
+  
+ \begin{equation*}
+   \log(\lambda(t)) = \beta_0(t) + \beta_1x_1 + \beta_2 x_2 + \ldots
+ \end{equation*}
+ 
+ \begin{itemize}
+   \item This is the proportional hazards model
+     \begin{itemize}
+       \item The only time-varying coefficient is $\beta_0$, the 
+              ``baseline hazard''
+       \item All terms are linear, no interactions
+     \end{itemize}
+     
+   \item If it holds, then the effect of any given covariate is 
+     captured by the one number summary $\exp(\beta)$ =
+     hazard ratio.
+     
+   \item What is remarkable is how well this model fits the data for 
+     acute endpoints such as time to death for subjects with advanced cancer,
+     or waiting time on an organ transplant list.
+
+   \item The model can be stretched to cover repeated events of the same type,
+     but not always.
+ \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Why focus on simplicity}
+  \begin{itemize}
+    \item Terse summaries for our papers
+    \item Too many projects on our plate
+    \item Thoughful simplicity: models which over-summarize are fit in order to 
+      better understand the data, but with the larger context always in mind.
+  \end{itemize}
+  \pause
+  ``All models are wrong, the question is whether they are wrong enough to 
+  not be useful.''  GEP Box
+  
+  ``A model is a lie that helps you see the truth.'' Howard Skipper
+\pause  
+  ``For every complex question there is a simple and wrong solution.'' 
+  A Einstien
+\end{frame}
+
+\begin{frame}{Marginal estimates}
+  \begin{itemize}
+    \item model with $x_1$, $x_2$, $x_3$, \ldots
+    \item $PMM_{x1=c} = E_X (\hat y(x) | x_1=c)$ 
+    \item Population Marginal Mean
+    \item Idea
+      \begin{itemize}
+        \item Compare treatment A to treatment B
+        \item Pretend we have a population of subjects = the other covariates
+        \item For each of those subjects we can compute the predicted response
+          for their covariates, under treatment A and then under treatment B
+        \item Take an average; $PMM_{A} - PMM_B$
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Implement}
+  \begin{itemize}
+    \item Which $\hat y$  
+    \item What population for the other covariates $X$
+      \begin{itemize}
+        \item data set as a whole
+        \item fixed data set, e.g., US 2000 age/sex distribution
+        \item external data set (calibration)
+        \item balanced factorial design (Yates, 1934)
+      \end{itemize}
+    \item Computation. 
+      \begin{itemize}
+        \item simple approach: brute force
+        \item \code{yates} function
+      \end{itemize}
+    \item Standard error
+      \begin{itemize}
+        \item simple in a few cases
+        \item parametric simulation
+        \item other?
+        \item open issue
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Old idea}
+  \begin{itemize}
+    \item $\hat y = S(t)$, population=data: direct adjusted survival
+    \item linear model, $\hat y= X\hat\beta$, population=data: closely
+      related to survey sampling estimates
+    \item g-estimates of causal modeling --- sort of
+    \item first instinct of a statistician is to change $Z$ to $E(Z)$
+      \pause
+    \item linear model, $\hat y= X\hat\beta$, population= factorial for the
+      categoricals, data for continuous: SAS GLM type III (SGTT)
+      \pause
+      \begin{enumerate}
+        \item clever and efficient formulas, but forgot what is being computed
+        \item horrible documentation (document an algorithm)
+        \item factorial population is rarely appropriate
+        \item other SAS (and R) procedures do something different (NSTT)
+      \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Issues}
+  \begin{itemize}
+    \item The model has to be correct
+    \item $\hat y$ should be unbiased
+      \begin{itemize}
+        \item since many values will be averaged, 
+          bias is more worrysome than variance
+        \item model will often be ``rich'' wrt $x_1$ shape and/or interactions
+          with other variables
+        \item similar to the thinking used in propensity scoring
+      \end{itemize}
+    \item Convince our clients that not everything is a hazard ratio
+      \begin{itemize}
+        \item Expected time in state (RMST)
+        \item Expected number of visits
+      \end{itemize}
+    \item More computation
+    \item Variance and power need exploration
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Time dependent covariates}
+
+\begin{frame}
+  {\Large Time dependent covariates}
+\end{frame}
+

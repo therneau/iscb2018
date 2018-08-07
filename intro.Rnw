@@ -1,0 +1,238 @@
+<<echo=FALSE>>=
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#ffffff",
+               size='footnotesize',  
+               warning=FALSE, error=FALSE, prompt=TRUE)
+options(contrasts= c("contr.treatment", "contr.poly"),
+        show.signif.stars = FALSE, continue=" ", width=60)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+@
+
+\section{Survival Data}
+\begin{frame}{Context}
+  \begin{itemize}
+    \item I am a statistician working in medical research.
+    \item Mayo is a tertiary care center
+    \item Most of the question I work with are ``time until \ldots''
+      \begin{itemize}
+        \item death due to advanced cancer
+        \item recurrent episodes in Crohn's disease
+        \item waiting time until organ transplant
+        \item \ldots
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Censoring}
+  Key issue: it is time to do the analysis, and not every subject has
+  yet had an event.
+
+This is most often encoded as a pair of variables using 0/1 for the
+status where 1= complete observation and 0= censored.
+\end{frame}
+
+\begin{frame}[fragile]
+<<<surv1, echo=TRUE>>=
+library(survival)
+test <- data.frame(time=   c(9, 3,1,1,6,6,8),
+                    status=c(1,NA,1,0,1,1,0),
+                    x=     c(0, 2,1,1,1,0,0))
+test
+#
+Surv(test$time, test$status)
+@
+\end{frame}
+
+\begin{frame}{Methods}
+  \begin{itemize}
+    \item ``time'' as incomplete data
+      \begin{itemize}
+        \item $(t, \delta)$ and $X$
+        \item The traditional viewpoint
+        \item Won't be seen again.
+       \end{itemize}
+      \pause
+       \item Multi-state models
+       	 \begin{itemize}
+	  \item Subjects go from state to state
+      	  \item Some have many transitions
+       	  \item Some have zero
+       	  \item There is no ``incomplete'' data.
+          \item Much easier to think about multiple events
+         \end{itemize}
+    \end{itemize}	
+\end{frame}
+
+\begin{frame}
+<<foura>>=
+# Four models
+oldpar <- par(mfrow=c(2,2), mar=c(1.1, 1.1, 1.1, 1.1))
+
+# Alive/Dead
+states <- c("Alive", "Dead")
+cmat <- matrix(c(0, 0, 1, 0), 2, 2,
+               dimnames = list(states, states))
+statefig(c(1,1), cmat)
+
+
+# Repeated infections
+states <- c("0", "1", "2", "...")
+cmat <- matrix(0L, 4, 4, dimnames = list(states, states))
+cmat[1,2] <- cmat[2,3] <- cmat[3,4] <- 1
+statefig(c(1,1,1,1), cmat, bcol=c(1,1,1,0))
+
+# competing risks
+states<- c("Waiting", "Liver\ntransplant", "Withdrawal", "Death")
+cmat <- matrix(0L, 4, 4, dimnames = list(states, states))
+cmat[1,] <- 1
+statefig(c(1,3), cmat)
+
+# CR and relapse in lymphoma
+states <- c("Induction", "CR", "SCT", "Relapse", "SCT", "Death")
+connect <- matrix(0, 6, 6, dimnames=list(states, states))
+connect[-6,6] <- 1   #all to death
+connect[1, -1] <- c(1,0, 0, 1, .45)
+connect[2, 3:6] <- c(1,1,0, .65)
+connect[3, 4] <- connect[4,3] <- 1
+location <- cbind(c(.5, .32, .16, .5, .7, .75),
+                  c(.875, .625, .375, .375, .5,  .125))
+statefig(location, connect, cex=.8, offset=.01)
+par(oldpar)
+@
+\end{frame}
+  
+\begin{frame}{Four quantities}
+  \begin{itemize}
+    \item 1. Event rates (arrows) $\lambda_{jk}$
+    \item 2. Probability in state $p(t) = (p_1, p_2, \ldots p_k)(t)$
+    \item 3. E(time in state)
+    \item 4. Pr(ever visit a state)or lifetime risk
+    \item All should be used
+  \pause
+    \item Statisticians in the field tend to flip back and forth between
+      1 and 2, which can confuse onlookers.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Event rates}
+  \begin{itemize}
+     \item Simple rate $r = \sum d_i/ \sum t_i$ \\
+       $P(y > t) = \exp(-r t)$
+     \item $r(t)$, $h(t)$, $\lambda(t)$ \\ 
+     \item Kaplan-Meier curves
+     \item Proportional hazards (Cox) model
+     \item Log-rank test
+ \pause       
+     \item Martingale theory gives a formal underpinning.
+       \begin{itemize}
+           \item $(N(t), Y(t))$ and $X(t)$ or $Z(t)$ 
+           \item $N_i(t)$ = number of events so far \\
+               $Y_i(t)$ = 1 if 'under observation' at time $t$
+       \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Graunt's Life Table (1662)}
+  \begin{tabular}{ccc}
+    Age Interval & Proportion Deaths & Proportion Surviving until \\
+    & in Interval & start of Interval \\ \hline
+    \phantom{0}0--6\phantom{0} & 0.36 & 1.00 \\
+    \phantom{0}7--16 & 0.24 & 0.64 \\
+    17--26 & 0.15 & 0.40 \\
+    27--36 & 0.09 & 0.25 \\
+    37-46  & 0.06 & 0.16 \\
+    47-56  & 0.04 & 0.10 \\
+    57-66  & 0.03 & 0.06 \\
+    67-76  & 0.02 & 0.03 \\
+    77-86  & 0.01 & 0.01 
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Event rates}
+  \begin{itemize}
+    \item Old idea
+    \item The effect of a covariate is often a change in event rate
+      \begin{itemize}
+        \item Add 16 year old driver to your insurance
+        \item Acute disease (Cox model)
+      \end{itemize} 
+    \item Good theory (martingale)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+<<shift1>>=
+oldpar <- par(mfrow=c(2,2), mar=c(5.1, 4.1, 1.1, 1.1))
+xx <- seq(0, 10, length=100)
+yy <- cbind(dnorm(xx, 4,1), dnorm(xx, 5,1))
+matplot(xx, yy, type='l', lwd=2, lty=1, xlab='x', ylab="density")
+y2 <- cbind(pnorm(xx, 4, 1, lower=FALSE), pnorm(xx, 5, 1, lower=FALSE))
+matplot(xx, y2, type='l', lwd=2, lty=1, xlab='x', ylab="Survival")
+
+y3 <- cbind(dlnorm(xx, 1, 1)/plnorm(xx, 1, 1, lower=FALSE),
+            dlnorm(xx, 1.5, 1)/ plnorm(xx, 1.5, 1, lower=FALSE))
+matplot(xx, y3, type='l', lwd=2, lty=1, log='y', 
+        xlim=c(.5, 10), xlab='x', ylab="Hazard")
+y4 <- cbind(plnorm(xx, 1, 1, lower=FALSE), plnorm(xx, 1.5, 1, lower=FALSE))
+matplot(xx, y4, type='l', lwd=2, lty=1, xlab='x', ylab="Survival")
+par(oldpar)
+@ 
+\end{frame}
+
+  
+
+\begin{frame}{Key thesis}
+  \begin{itemize}
+      \item For acute disease processes the classic triad of KM, Cox, log-rank
+        works really well.
+        \begin{itemize}
+          \item One outcome dominates all others.
+          \item Through the early 1990s these were the problems I saw.
+            \pause
+          \item Not anymore
+        \end{itemize}
+      \item  Multiple outcomes are the rule, not the exception.
+      \item It's time to move on.
+      \item And it isn't that hard.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+<<dementia>>=
+oldpar <- par(mfrow=c(1,2), mar=c(1.1, 1.1, 1.1, 1.1))
+states <- c("Cognitively\nnormal", "Mild\nCognitive\nImpairment", 
+            "Dementia", "Death")
+connect <- matrix(0, 4,4, dimnames=list(states, states))
+connect[,4] <- 1
+connect[1,2] <- connect[2,3] <- 1
+statefig(matrix(c(3,1), nrow=1), connect)
+
+states <- c("A-N-", "A+N-", "A-N+", "A+N+")
+connect <- matrix(0, 4,4, dimnames=list(states, states))
+connect[1,2] <- connect[1,3] <- connect[2,4] <- connect[3,4] <- 1
+statefig(matrix(c(1,2,1), nrow=1), connect)
+par(oldpar)
+@ 
+\end{frame}
+
+
+\begin{frame}{Informative censoring}
+  \begin{itemize}
+    \item All time to event models assume \emph{uninformative censoring}.
+    \item You cannot cease following someone because of something that will
+      happen in the future.
+      \begin{itemize}
+         \item Analysis of those who "comply with the treatment"
+	 \item People drop out because they are about to fail \\
+	     MDPIT trial (Oakes et al, JASA 1993; 88:44-49)
+	 \item Only those who are sick respond to queries.
+	 \pause
+	 \item The fact that someone dropped out allows you to better guess
+	 their death rate.
+     \end{itemize}
+  \end{itemize}
+\end{frame}

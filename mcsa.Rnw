@@ -1,0 +1,197 @@
+<<echo=FALSE>>=
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#ffffff",
+               warning=FALSE, error=FALSE, prompt=TRUE)
+options(contrasts= c("contr.treatment", "contr.poly"),
+        show.signif.stars = FALSE, continue=" ", width=60)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+library("survival", quietly=TRUE)
+adir <- "~therneau/consult/alzheimer/data/"
+load(paste0(adir, "mcsaFeb17.rda"))   #creates data set mcsa2
+mcsa <- mcsa2
+load("counts2017.rda")
+crisk <- function(what, horizontal = TRUE, ...) {
+    nstate <- length(what)
+    connect <- matrix(0, nstate, nstate,
+                      dimnames=list(what, what))
+    connect[1,-1] <- 1  # an arrow from state 1 to each of the others
+    if (horizontal) statefig(c(1, nstate-1),  connect, ...)
+    else statefig(matrix(c(1, nstate-1), ncol=1), connect, ...)
+}
+@
+
+\begin{frame}{Mayo Clinic Study of Aging}
+  \begin{itemize}
+    \item On autopsy, Alzheimer's patients have amyloid plaques and 
+      neurofibrollary tangles in their brain tissue.
+    \item The population is aging.
+    \item Studies
+      \begin{itemize}
+        \item Alzhiemer's Disease Neuroimaging Initiative (ADNI)
+        \item Religious Orders Study (ROS), Memory and Aging Project (MAP)
+        \item Mayo Clinic Study of Aging (MCSA)
+          \begin{itemize}
+            \item Enroll a stratified population sample
+            \item Equal number of males and females, larger cohorts at older 
+              ages
+            \item Follow all subjects at a regular intervals
+            \item Replenish the cohort for drop-out and death.
+          \end{itemize}
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Key Measurements}
+  \begin{itemize}
+    \item Clinical assessment
+       \begin{itemize}
+          \item Cognitive tests
+          \item Care team
+        \end{itemize}
+       \pause
+    \item MRI structural scan
+    \item Amyloid PET
+    \item FDG PET 
+    \item Tau PET 
+      \pause
+    \item CSF tau and fractions
+ \end{itemize}
+\end{frame}
+
+<<counts, echo=FALSE>>=
+first <- which(!duplicated(mcsa$ptnum))
+enroll <- table(mcsa$male[first])
+
+itau <- tapply(!is.na(mcsa$tau.ratio), mcsa$ptnum, any)
+ipib <- tapply(!is.na(mcsa$pib.ratio), mcsa$ptnum, any)
+ithick <- tapply(!is.na(mcsa$thickness), mcsa$ptnum, any)
+@ 
+
+\begin{frame}{Enrollment}
+  \begin{itemize}
+    \item Ever enrolled \Sexpr{sum(enroll[1])} females, 
+      \Sexpr{sum(enroll[2])} males
+    \item Carrying capacity of 2500--2700
+    \item Clinical visits every 15 months
+    \item Imaged subset: \Sexpr{sum(itau | ithick | ipib)}
+      \begin{itemize}
+        \item Neurodegeneration: \Sexpr{sum(ithick)}
+        \item Neurodegeneration and amlyoid: \Sexpr{sum(ithick & ipib)}
+        \item Neurodegeneration, amloid, and tau: \Sexpr{sum(ipib & ithick & itau)}
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+<<model1, echo=FALSE>>=
+#layout(matrix(c(1,1,1,2,3,4), 3,2), width=c(3,1))
+oldpar <- par(mar=c(2.1, 2.1, 2.1, 2.1))
+sname = c("A0/N0", "A1/N0", "A0/N1",  "A1/N1", "A0/N2", "A1/N2", "Death")
+connect <- matrix(0, 7, 7, dimnames=list(sname, sname))
+connect[1,2] <- connect[1,3] <- connect[2,4] <- connect[3,4] <- 1
+connect[3,5] <- connect[4,6] <- connect[3,4] <- connect[5,6] <- 1
+statefig(matrix(c(1, 2, 2,2), nrow=1), connect, cex=1,
+         alty=c(rep(1,7), rep(2,6)), acol=rep(1:2, c(7,6)))
+@ 
+\end{frame}
+
+\begin{frame}
+<<model1b, echo=FALSE>>= 
+connect[1:6, 7] <- 1
+connect[3,7] <- 1.3
+statefig(matrix(c(1, 2, 2,2), nrow=1), connect, cex=1,
+         alty=c(rep(1,7), rep(2,6)), acol=rep(1:2, c(7,6)))
+par(oldpar)
+@ 
+\end{frame}
+
+\begin{frame}{States}
+  \begin{itemize}
+    \item A0/A1: none/mild vs moderate/severe amlyoid burden
+    \item T0/T1: none/mild vs moderate/severe tau burden
+    \item N0/N1/N2: increasing neurodegeneration
+    \item 13 states (boxes)
+    \item 32 transitions (arrows)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item 5 covariates: intercept, age, sex, APOE positivity, hypertension
+    \item 32 transitions
+    \item 160 potential parameters
+    \item plus HMM parameters
+      \pause
+    \item Don't get carried away!
+  \end{itemize}
+\end{frame}
+ 
+\begin{frame}[fragile]
+  \small
+\begin{verbatim}
+list(N(0:1)/state('death') ~ 1 + iage + sex / init=c(-4, .1, .4) + common,
+     N(2)  /state('death') ~ 1 + iage + sex / init=c(-3, .1, .4) + common,
+     A*T*N                 ~ 1 + iage / init(c(-4, .1)),
+     A + N + T             ~ apoe + htn)
+\end{verbatim} 
+\normalsize
+\end{frame}
+
+\begin{frame}
+  \myfig{rate1}
+\end{frame}
+
+\begin{frame}
+  \myfig{rate2}
+\end{frame}
+
+\begin{frame}
+  \myfig{rate3}
+\end{frame}
+
+\begin{frame}
+  \myfig{rate4}
+\end{frame}
+
+\begin{frame}{Results}
+  \begin{itemize}
+    \item Rates
+      \begin{itemize}
+        \item What is the pattern of rates?
+          \begin{itemize}
+            \item The T0$\rightarrow$T1 rate is higher in the presence of
+              A1, but not vice-versa.  (Amyloid deposits promote tau.)
+            \item A1/T1 promotes changes in N
+          \end{itemize}
+        \item The role of covariates.
+          \begin{itemize}
+            \item A positive APOE genotype affects A0/A1 transitions, but
+              not others.
+            \item Other covariates affect N but not A or T
+          \end{itemize}
+      \end{itemize}
+    \item Outcomes
+      \begin{itemize}
+        \item What is the probability of ever visiting the N2 state? 
+          \item What is the average duration of time spent in N2?
+          \item What is the predicted fraction who go down each path?
+        \item What is the impact of a change in one rate?
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Conclusions}
+  \begin{itemize}
+    \item Multi-state data ranges from the simple to the complex
+    \item Good tools are available
+    \item You need more than just a hazard ratio
+    \item There is wide opportunity for new methods and software
+  \end{itemize}
+\end{frame}
+
+          

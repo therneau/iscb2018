@@ -1,0 +1,715 @@
+<<echo=FALSE>>=
+library("survival", quietly=TRUE)
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#ffffff",
+               size='footnotesize',  
+               warning=FALSE, error=FALSE, prompt=TRUE)
+options(contrasts= c("contr.treatment", "contr.poly"),
+        show.signif.stars = FALSE, continue=" ", width=60)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+
+# used later to draw some curves
+crisk <- function(what, horizontal = TRUE, ...) {
+    nstate <- length(what)
+    connect <- matrix(0, nstate, nstate,
+                      dimnames=list(what, what))
+    connect[1,-1] <- 1  # an arrow from state 1 to each of the others
+    if (horizontal) statefig(c(1, nstate-1),  connect, ...)
+    else statefig(matrix(c(1, nstate-1), ncol=1), connect, ...)
+}
+
+state3 <- function(what, horizontal=TRUE, ...) {
+    if (length(what) != 3) stop("Should be 3 states")
+    connect <- matrix(c(0,0,0, 1,0,0, 1,1,0), 3,3,
+                      dimnames=list(what, what))
+    if (horizontal) statefig(1:2, connect, ...)
+    else statefig(matrix(1:2, ncol=1), connect, ...)
+}
+
+state4 <- function() {
+    sname <- c("Waiting", "CR", "Transplant", "Transplant")
+    layout <- cbind(c(1/2, 3/4, 1/4, 3/4),
+                    c(5/6, 1/2, 1/2, 1/6))
+    connect <- matrix(0,4,4, dimnames=list(sname, sname))
+    connect[1, 2:3] <- 1
+    connect[2,4] <- 1
+    statefig(layout, connect)
+}
+@ 
+
+\section{Aalen-Johansen Curves}
+\begin{frame}
+{\large Probability in State}
+\end{frame}
+
+\subsection{Transplant waiting list}
+\begin{frame}{Transplant outcome}
+  The data set that first forced me to explore multi-state methods.
+  \begin{itemize}
+    \item All patients added to the liver transplant
+      waiting list during 1990-1999 at Mayo Clinic
+    \item Corresponds to an explosion in LT programs and patients
+    \item The median waiting time at the start is 45 days, 446 days at the end
+    \item Question: did death on the waiting list increase?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Note}
+  The current liver transplant waiting list, handled by the United Network
+  for Organ Sharing (UNOS),
+  is managed in a much more sophisticated way than it was at the time of this
+  data. Do not make conclusions about current conditions from this analysis.
+\end{frame}
+
+\begin{frame}{Competing risk}
+<<tranfig0>>=
+crisk(c("Waiting list", "transplant", "withdraw", "death"))
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Impact of Waiting Time}
+  \begin{itemize}
+    \item All Mayo patients listed from Feb 1990 to Aug 1999
+    \item 815 subjects: 636 OLT, 66 death, 37 withdraw, 76 censored
+       \pause
+    \item Primary question: Did increased waiting time harm survival?  For whom?
+    \item \code{transplant} data set is included in R
+      \begin{itemize}
+        \item age, sex, blood type, year of listing
+        \item follow-up time and event = (death, ltx, withdraw, censor)
+      \end{itemize}
+    \item Aalen-Johansen estimate \\
+      \code{survfit(Surv(futime, event) $\sim$ 1, data=transplant)}
+  \end{itemize}
+
+<<tfit, echo=FALSE>>=
+period <- cut(transplant$year, c(1989, 1992, 1995, 1997, 2000),
+              labels=c('1990-92', '1993-95', '1996-97', '1998-99'))
+pfit <- survfit(Surv(futime, event) ~ period, transplant)
+pfit$states[4] <- "waiting"
+plot(pfit[1,1:4], lwd=2, col=1:4, xscale=365.25, 
+     xlab="Years", xmax=730)  # period 1
+legend(360, .8, pfit$states, lty=1, lwd=2, col=1:4)
+# The default is not to plot any states that have no name,
+#   adding a name sidesteps this
+@ 
+\end{frame}
+
+\begin{frame}
+<<transplant1, echo=FALSE>>=
+plot(pfit[,1:2], mark.time=FALSE, xscale=30.5, xmax=735,
+     col=1:4, xaxt='n', lwd=rep(2:1, each=4),
+     xlab="Months on waiting list",
+     ylab="Fraction transplanted and dead")   #time to liver transplant
+temp <- c(0,6,12,18,24)
+axis(1, temp*30.5, temp)
+legend(400, .4, levels(period), lty=1, col=1:4, lwd=2, bty='n')
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{plots}
+  \begin{itemize}
+    \item There are 16 curves = 4 states * 4 periods
+    \item In R the curves can be treated like a matrix
+      \begin{itemize}
+        \item \code{pfit[1,]} = all states, first period
+        \item \code{pfit[,1]} = death state, all periods
+      \end{itemize}
+    \item Useful, since a primary display challenge is artistic: how to
+      not be overwhelmed with a spaghetti plot.
+  \end{itemize}
+
+<<example, echo=TRUE, eval=FALSE>>=
+pfit <- survfit(Surv(futime, event) ~ period, transplant)
+plot(pfit[,1:2], ...)
+@ 
+\end{frame}
+
+\begin{frame}
+<<transplant4>>=
+plot(pfit[,1], xscale=30.5, xmax=735, 
+     col=1:4, xaxt='n', lwd=2, lty=1,
+     xlab="Months on waiting list",
+     ylab="Died on the list") 
+temp <- c(0,6,12,18,24)
+axis(1, temp*30.5, temp)
+legend(360, .04, levels(period), lty=1, lwd=2, col=1:4)
+@ 
+\end{frame}
+
+\begin{frame}
+<<transplant5>>=
+pfit2 <- survfit(Surv(futime/30.5, event) ~ period + abo,
+                 data=transplant)
+oldpar <- par(mfrow=c(2,2), mar=c(3.1, 3.1, 1,1))
+plot(pfit2[1:4, 2], col=1:4, xmax=24, lwd=2,
+     ylim=c(0,1), xlab="Months", ylab="Pr(transplant)")
+legend(15, .6, c("O", "A", "B", "AB"), lty=1, lwd=2,
+       col=c(4,1,3,2))
+text(15, .8, "90-92")
+plot(pfit2[5:8, 2], col=1:4, xmax=24, lwd=2, ylim=c(0,1), 
+      xlab="Months", ylab="Pr(transplant)")
+text(15, .4, "93-95")
+
+plot(pfit2[9:12, 2], col=1:4, xmax=24, lwd=2, ylim=c(0,1), 
+      xlab="Months", ylab="Pr(transplant)")
+text(15, .3, "96-97")
+plot(pfit2[13:16, 2], col=1:4, xmax=24, lwd=2, ylim=c(0,1), 
+      xlab="Months", ylab="Pr(transplant)")
+text(15, .3, "98-99")
+par(oldpar)
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Wrong approach}
+  Fit a survival model of time to death, treating transplant and 
+  withdrawal as censored.
+  
+<<tranbad, echo=TRUE, fig.show="hide">>=
+badfit <- survfit(Surv(futime, event=="death") ~ period, 
+                  data= transplant)
+plot(badfit, fun='event', col=1:4, mark.time=F, lwd=2,
+     xscale=365.25, xlab="Years since entry", ylab="Death")
+legend(.5, .9, levels(period), lty=1, lwd=2, col=1:4, bty='n')
+@   
+\end{frame}
+
+\begin{frame}
+  \myfig{tranbad-1}
+\end{frame}
+
+\begin{frame}
+What's wrong?
+\begin{itemize}
+  \item Major issues
+    \begin{enumerate}
+      \item An estimate of death rates for a population
+      \emph{where transplant
+        and withdrawal were abolished}.  That was not the question.
+      \item The estimate assumes uninformative censoring, i.e., those who
+        were removed due to transplant were a random sample of those at risk
+        for death.
+    \end{enumerate}
+  \item Unreliable estimate of an uninteresting quantity.\pause
+  \item The multi-state curve estimates the fraction of subjects who will
+    \emph{actually experience} death before transplant.
+    \begin{itemize}
+      \item Aalen-Johansen estimate replaces the Kaplan-Meier
+      \item an observable quantity
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Overview}
+
+\begin{frame}
+This class has 3 main points
+\begin{itemize}
+  \item multi-state models are an important addition
+    to your modeling toolbox
+  \item they can yield important insights into your data
+  \item they are easy to implement with current software
+\end{itemize}
+
+Sub-theme:  interpretation can be complicated -- you will be
+required to THINK.
+\end{frame}
+
+\begin{frame}
+  \begin{quote}
+If you make someone think that they are thinking,
+They will love you for it.
+If you make them actually think,
+They will hate you for it.
+This explains why people love pie charts and hate more effective graphs.
+—Greg Snow
+R-help (December 2009)
+\end{quote}
+\end{frame}
+
+
+\begin{frame}
+  Focus on examples
+
+  \begin{itemize}
+    \item When
+    \item How
+    \item Usefulness
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Resources}
+ \begin{itemize}
+   \item H. Putter, M Fiocco and R. B. Geskus, Tutorial in biostatistics:
+     Competing risks and multi-state models.
+     Stat in Medicine, 2007:2389-2430.
+   \item T. Therneau, Competing Risks, R survival package.
+   \item T. Therneau, Multi-state models, R survival package.
+   \item J. Beyersmann, A Allignol, M. Schumacher, Competing and multistate
+     models in R.
+ \end{itemize}
+\end{frame}
+
+\subsection{Theory} 
+
+\begin{frame}{Math: the KM estimator}
+Let $t_1$, $t_2$, \ldots be the unique death times.
+\begin{align*}
+ \lambda(t_i) &= d_i / n_i \mbox{\qquad fraction of deaths at $t_i$} \\
+ KM(t) &= \prod_{s \le t} [1 - \lambda(s)] \\
+ FH(t) &= \prod_{s \le t}\exp[-\lambda(s)]
+ \end{align*}
+
+Cox model code can use a Kaplan-Meier like estimate (Kalbfleish-Prentice)
+or a Fleming-Harrington like one (Breslow); the latter is easier to
+compute.
+\end{frame}
+
+\begin{frame}{Multi-state: Aalen-Johansen estimator}
+  At each time create a transition matrix
+  
+\begin{equation*}
+  H= \left( \begin{array}{cccc}
+     \lambda_{11}(t) & \lambda_{12}(t) &\lambda_{13}(t) &\lambda_{14}(t) \\
+     \lambda_{21}(t) & \lambda_{22}(t) &\lambda_{23}(t) &\lambda_{24}(t) \\
+     \lambda_{31}(t) & \lambda_{32}(t) &\lambda_{33}(t) &\lambda_{34}(t) \\
+     \lambda_{41}(t) & \lambda_{42}(t) &\lambda_{43}(t) &\lambda_{44}(t) 
+      \end{array} \right)
+  \end{equation*}
+
+\begin{itemize}
+  \item $\lambda_{ij}(t) = d_{ij}(t) / n_i(t)$ \\
+    = number who went from $i \rightarrow j$ / number in state $i$
+  \item Each row sums to 1
+  \item Diagonal = those who didn't go anywhere
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+Then
+\begin{align*}
+ p(t) &= p(0)  \prod_{s \le t} H(s) \\
+      &\approx p(0)  \prod_{s \le t} \exp(H(s)- \mathcal{I})
+\end{align*}
+ 
+\begin{itemize}
+  \item the $i,j$ element of $P(t)$ is the probability that someone who
+    started in
+    state $i$ at time 0 will be in state $j$ at time $t$.
+  \item $p(0)$ = starting distribution, usually $(1, 0, 0, \ldots)$
+  \item $p_j(t)$ =  Pr(in state $j$ at time $t$), $\sum_j p_j(t)=1$
+  \item $p(t)$ is the Aalen-Johansen estimator
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Alternate view}
+  \begin{itemize}
+    \item Treat survival as a Poisson process.
+      \begin{enumerate}
+        \item Divide time into a bunch of intervals
+        \item Within each interval calculate the naive rate of 
+          transition $r_{ij}(t)$ for each pair of states $i$ and $j$\\
+          = (number making the transtion) / time at risk
+        \item Markov model estimate is $p(0) [R(1) t_1][ R(2)t_2] \ldots$.
+      \end{enumerate}
+    \item For a 2 state alive-dead model this yields the ``actuarial'' 
+      estimator.
+      \begin{itemize}
+        \item Once quite common.
+      \end{itemize}
+    \pause
+    \item For the 2 state model, let the widths of the intervals go to zero.
+    \item The theory still works out!  Kaplan and Meier (1958)
+    \item Pet peeve: ``Actuarial survival was calculated using the method 
+      of Kapan and Meier''.
+    \pause
+    \item For the general multi-state model, let the widths of the intervals
+    go to zero.  The theory still works out!  Aalen and Johansen (1978)
+  \end{itemize}
+\end{frame}      
+ 
+\begin{frame}{Exercises}
+  \begin{itemize}
+    \item For the two state alive $\rightarrow$ dead model, show that 
+      $p_1(t)$ from the Aalen-Johansen estimate = Kaplan-Meier.
+    \item For the competing risks model show that 
+      $p(t)$ = ``cumulative incidence'' estimator.
+    \item Explain why it took 25 years to adopt the KM.
+    \item Explain why it has been over 35 years for the AJ, and it still is
+      rare. (Statisticians are getting even slower?)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+In the R survival package
+\begin{Example}
+fit <- survfit(Surv(time, status) ~ group, data=mydata)
+\end{Example}
+ \begin{itemize}
+   \item If \code{status} is a 0/1 or FALSE/TRUE variable, this gives the
+   Kaplan-Meier + Greenwood estimate of variance
+
+   \item If \code{status} is a categorical variable (factor), this gives the
+    Aalen-Johansen estimate + infinitesimal jackknife  estimate of variance.
+
+   \item Same commands to create, print, plot, or extract values from the
+   curves.
+   \end{itemize}	
+\end{frame}
+
+\begin{frame}{IJ estimator}
+  Assume a case weight vector of $w$, and for each subject $k$ compute
+  \begin{align*}
+  U_{jk}(t) &= \left. \frac{p_j(t)}{w_k} \right|_w \\
+  V(t) &= U'(t) U(t)
+  \end{align*}
+ 
+  \begin{itemize}
+    \item The robust variance for a Cox model is an IJ estimate \\
+     So is the Horvitz-Thompson variance estimate (survey sampling) \\
+     The working independence variance of GEE models \\
+     \ldots
+    \item For a 2 state alive-dead model, the IJ estimate = Greewood's estimate
+       \begin{itemize}
+         \item emprically verified for a large number of data sets
+	 \item a proof is lacking
+	 \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{AJ curves, 2 state model}
+\begin{itemize}
+  \item $p_1(t)$ = fraction still alive \\
+        $p_2(t)$ = fraction who have died 
+  \item Some disciplines prefer to plot prob(alive), 
+    \begin{itemize}
+      \item the classic survival curve that starts at 1 and goes down
+      \item some \emph{insist} on it
+    \end{itemize}
+  \item Some disciplines prefer to plot prob(event), which starts at 0 and goes
+    up
+  \item Convention and history, not science.
+  \item Pocock and Altman, Survival plots of time-to-event outcomes in 
+    clinical trials: good practice and pitfalls.  Lancet 2002.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{AJ curves, multi-state}
+  \begin{itemize}
+  \item In a multi-state model $p(t)$ sums to 1 so one of the curves can
+    be omitted from a plot
+  \item Most people omit Pr(still in the entry state) as it is the least 
+    interesting
+    \item As a result all the curves go up \pause
+    \item Some users/disciplines/journals are so bothered by this that they
+      suggest a plot of $(1-p_1(t))$, $(1- p_2(t))$, etc.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Example: Lymphoma treatment trial}
+  The canonical treatment path for some hematologic malignancies is
+  
+  entry \lrr initial trt \lrr CR \lrr BMT \lrr relapse 
+  
+  Not everyone follows this ideal path
+  
+  \begin{itemize}
+    \item The initial or conditioning treatment is designed to remove the
+      large majority of malignant cells
+    \item CR: complete response = no overt evidence of malignancy
+    \item BMT/SCT: bone marrow transplant or stem cell transplant = high
+      intensity chemotherapy that will ablate the marrow and requires rescue
+      with hemotologic stem cells
+    \item relapse: reappearance of disease after CR
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+<<tx5>>= 
+state5 <- function() {
+    # CR and relapse in lymphoma
+    states <- c("Induction", "CR", "SCT", "Relapse", "SCT", "Death")
+    connect <- matrix(0, 6, 6, dimnames=list(states, states))
+    connect[-6,6] <- 1   #all to death
+    connect[1, -1] <- c(1,0, 0, 1, .45)
+    connect[2, 3:6] <- c(1,1,0, .65)
+    connect[3, 4] <- connect[4,3] <- 1
+    location <- cbind(c(.5, .32, .16, .5, .7, .75),
+                  c(.875, .625, .375, .375, .5,  .125))
+    statefig(location, connect, cex=.8, offset=.01)
+}
+state5()
+@ 
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item Subjects can (and do) traverse every arrow in the diagram
+    \item The vignette on multi-state models in the survival package
+      explores this data set.
+    \item \url{cran.r-project.org/web/packages/survival/vignettes/multi.pdf}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+<<overall, echo=TRUE>>=
+myeloid[1:5,]
+@ 
+\end{frame}
+
+\begin{frame}{Overall survival}
+<<myeloid1>>=
+sfit0 <- survfit(Surv(futime, death) ~ trt, myeloid)
+plot(sfit0, xscale=365.25, xaxs='r', col=1:2, lwd=2, log=TRUE,
+     xlab="Years post enrollment", ylab="Survival")
+legend(20, .4, c("Arm A", "Arm B"),
+       col=1:2, lwd=2, bty='n')
+@ 
+\end{frame}
+
+\begin{frame}
+<<myelod1>>=
+data1 <- myeloid
+data1$crstat <- factor(with(data1, ifelse(is.na(crtime), death, 2)),
+                        labels=c("censor", "death", "CR"))
+data1$crtime <- with(data1, ifelse(crstat=="CR", crtime, futime))
+
+data1$txstat <- factor(with(data1, ifelse(is.na(txtime), death, 2)),
+                        labels=c("censor", "death", "transplant"))
+data1$txtime <- with(data1, ifelse(txstat=="transplant", txtime, futime))
+for (i in c("futime", "crtime", "txtime", "rltime"))
+    data1[[i]] <- data1[[i]] * 12/365.25  #rescale to months
+sfit1 <- survfit(Surv(futime, death) ~ trt, data1) #survival
+sfit2 <- survfit(Surv(crtime, crstat) ~ trt, data1) # CR
+sfit3 <- survfit(Surv(txtime, txstat) ~ trt, data1)
+
+layout(matrix(c(1,1,1,2,3,4), 3,2), widths=2:1)
+oldpar <- par(mar=c(5.1, 4.1, 1.1, .1))
+plot(sfit2[,2], mark.time=FALSE, fun='event', xmax=48,
+         lty=3, lwd=2, col=1:2, xaxt='n',
+     xlab="Months post enrollment", ylab="Events")
+lines(sfit1, mark.time=FALSE, xmax=48, fun='event', col=1:2, lwd=2)
+lines(sfit3[,2], mark.time=FALSE, xmax=48, fun='event', col=1:2, 
+          lty=2, lwd=2)
+
+xtime <- c(0, 6, 12, 24, 36, 48)
+axis(1, xtime, xtime) #marks every year rather than 10 months
+temp <- outer(c("A", "B"), c("death", "transplant", "CR"),  paste)
+temp[7] <- ""
+legend(25, .3, temp[c(1,2,7,3,4,7,5,6,7)], lty=c(1,1,1, 2,2,2 ,3,3,3),
+       col=c(1,2,0), bty='n', lwd=2)
+abline(v=2, lty=2, col=3)
+
+# add the state space diagrams
+par(mar=c(4,.1,1,1))
+crisk(c("Entry","Death", "CR"), alty=3)
+crisk(c("Entry","Death", "Tx"), alty=2)
+crisk(c("Entry","Death"))
+par(oldpar)
+@ 
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item Almost all of the CR occur by 2 months (green line)
+    \item The additional responses for arm B happen after this
+      \pause
+   \item Transplants start at 2 months, more A than B!
+    \item Survival advantage for B at 5 months
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Computation}
+  \begin{itemize}
+  \item For each different state space configuration, create a data set.
+    \begin{itemize}
+      \item id, (time1, time2],  endpoint, covariates
+      \item The interval from time1 to time2 terminated with a given endpoint
+        at time2.
+        \begin{itemize}
+          \item censor, dead
+          \item censor, CR, death before CR
+          \item censor, SCT, death before SCT
+        \end{itemize}
+    \end{itemize}
+  \item A familiar task for time-dependent covariates.
+  \item Fit AJ curves for each, create a mashup plot.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+<<>>=
+temp <- sfit2
+temp$states[3] <- "entry"
+plot(temp, col=1:2, lty=rep(c(1,3,2), each=2), xmax=48,
+     xlab="Months post enrollment", ylab="P(state")
+text(20, .8, "CR before death")
+text(35, .25, "Death without CR")
+text(40, .02, "Neither (yet)")
+@ 
+\end{frame}
+
+\begin{frame}
+<<cr2>>=
+temp <- myeloid
+id <- which(temp$crtime == temp$txtime) # the one special person
+temp$crtime[id] <- temp$crtime[id] -1   # move their CR back by 1 day
+data2 <- tmerge(myeloid[, c('id', 'trt')], temp,
+                 id=id, death=event(futime, death),
+                        transplant = event(txtime),
+                        response   = event(crtime),
+                        relapse    = event(rltime),
+                        priortx    = tdc(txtime),
+                        priorcr    = tdc(crtime))
+data2$event <- with(data2, factor(death + 2*response + 3*transplant + 
+                                4*relapse, 0:4,
+                                labels=c("censor", "death", "CR", 
+                                         "transplant", "relapse")))
+for (i in c("tstart", "tstop"))
+    data2[[i]] <- data2[[i]] *12/365.25  #scale to months
+
+# duration of CR
+data2$crstat <- with(data2, factor(death +2*response + 3*relapse, 0:3,
+	                    labels= c("censor", "death", "CR", "relapse")))
+crsurv <- survfit(Surv(tstart, tstop, crstat) ~ trt,
+                  data= data2, id=id, influence=TRUE)
+sfit2 <- survfit(Surv(crtime, crstat) ~ trt, data1, id=id) # ever CR
+
+layout(matrix(c(1,1,2,3), 2,2), widths=2:1)
+oldpar <- par(mar=c(5.1, 4.1, 1.1, .1))
+plot(sfit2[,2], lty=3, lwd=2, col=1:2, xmax=12, 
+     xlab="Months", ylab="CR")
+lines(crsurv[,2], lty=1, lwd=2, col=1:2, xmax=12)
+par(mar=c(4, .1, 1, 1))
+crisk( c("Entry","CR", "Death"), alty=3)
+state3(c("Entry", "CR", "Death/Relapse"))
+
+par(oldpar)
+layout(1)
+@ 
+\end{frame}
+
+\begin{frame}
+  Treatment arm B has more CRs and they are more durable.  
+  \begin{itemize}
+    \item ``But I want numbers''
+    \item Values and se at particularly follow-up times.
+      \begin{itemize}
+        \item A at 6, 12, 18 months: .56(.03), .40(.03), .31(.03)
+        \item B at 6, 12, 18 months: .67(.03), .53(.03), .45(.03)
+      \end{itemize}
+    \item Mean time in state (sojourn time)
+        \begin{itemize}
+          \item \emph{restricted} mean, up to a given time point (24)
+          \item A: 9.6 (0.5), B: 12.3 (0.5)
+        \end{itemize}
+     \item ``But I want p-values''
+       \begin{itemize}
+       \item B-A = 2.7 (.77), $p < .001$
+       \end{itemize}
+  \end{itemize}
+\end{frame}        
+
+\begin{frame}
+<<sfit4>>= 
+sfit4 <- survfit(Surv(tstart, tstop, event) ~ trt, data2, id=id)
+layout(matrix(1:2,1,2), widths=2:1)
+oldpar <- par(mar=c(5.1, 4.1, 1,.1))
+plot(sfit4, col=rep(1:4,each=2), lwd=2, lty=1:2, xmax=48, xaxt='n',
+     xlab="Months", ylab="Current state")
+axis(1, xtime, xtime)
+text(c(40, 40, 40, 40), c(.51, .13, .32, .01),
+     c("Death", "CR", "Transplant", "Recurrence"), col=1:4)
+
+par(mar=c(5.1, .1, 1, .1))
+state5()
+par(oldpar)
+layout(1)
+@
+\end{frame}
+
+\begin{frame}{Data}
+  \begin{itemize}
+    \item Creating the prior curves is about
+    \begin{itemize}
+       \item 70\% create the data
+       \item 10\% compute the fit
+       \item 20\% draw the picture
+     \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%
+\begin{frame}[fragile]
+  \frametitle{Final figure}
+\begin{verbatim}  
+  sfit4 <- survfit(Surv(tstart, tstop, event) ~ trt, 
+                  data= data2, id=id)
+\end{verbatim}  
+
+<<fdata1>>=
+# do it in days, for a nicer printout
+tdata <- data2
+dfun <- function(x) round(x*365.25/12)   # months to days
+tdata$tstart <- dfun(tdata$tstart)
+tdata$tstop <- dfun(tdata$tstop)
+tdata[1:10, c('id', 'trt', 'tstart', 'tstop', 'event')]
+@
+\end{frame}
+
+
+\begin{frame}
+<<reprise>>=
+layout(matrix(c(1,1,2,3), 2,2), widths=2:1)
+oldpar <- par(mar=c(5.1, 4.1, 1.1, .1))
+plot(crsurv[,2], lty=1, lwd=2, col=1:2, xmax=12,
+     xlab="Months", ylab="CR")
+par(mar=c(4, .1, 1, 1))
+state3(c("Entry", "CR", "Death/Relapse"))
+
+par(oldpar)
+layout(1)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<tdata2>>=
+tdata[1:10, c('id', 'trt', 'tstart', 'tstop', 'event', "crstat")]
+@
+
+\begin{itemize}
+  \item A time period can be broken up
+  \item (0, 5, CR), (5, 20, death)
+  \item (0, 5, CR), (5, 8, censor), (8,15, censor), (15, 20, death)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+<<echo=TRUE>>=
+sfit4 <- survfit(Surv(tstart, tstop, event) ~ trt, data2, id=id)
+
+sfit4$transtions
+@
+\end{frame}
+
+\begin{frame}{Building data sets}
+  \begin{itemize}
+     \item Think through the special cases
+        \begin{itemize}	 
+          \item CR and transplant on the same day
+	  \item MGUS data: progression and death
+	  \item PAD data set: a joint left/right amuptation
+          \item R survival does not allow a zero length time interval
+	 \end{itemize}
+
+     \item Build the data set
+     \item Print out and READ some portion of it
+     \item Fit the model
+  \end{itemize}
+\end{frame}

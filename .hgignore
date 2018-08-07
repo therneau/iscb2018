@@ -1,0 +1,12 @@
+.*\.tex$
+.*\.snm$
+.*\.toc$
+.*\.vrb$
+.*\.aux$
+.*\.R$
+test.Rnw
+proposal
+Index
+figures
+theme
+

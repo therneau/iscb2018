@@ -1,0 +1,136 @@
+<<echo=FALSE>>=
+library(survival, quietly=TRUE)
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#ffffff",
+               warning=FALSE, error=FALSE, prompt=TRUE)
+options(contrasts= c("contr.treatment", "contr.poly"),
+        show.signif.starts = FALSE, continue=" ", width=60)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+@ 
+
+\section{Sequential Events}
+\begin{frame}
+  {\Large Sequential Events}
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item One of the first applications, widely used.
+    \item Data sets in the survival package (book by Therneau and Grambsch)
+      \begin{itemize}
+        \item Sequential events
+          \begin{itemize}
+            \item Recurrent bladder cancer
+            \item Repeated infections in children with chronic granulomatis
+             disease
+           \item rhDNase for the treatment of cystic fibrosis
+           \item Failure of kidney catheters
+          \end{itemize}
+        \item Parallel events
+          \begin{itemize}
+            \item Left and right eyes in diabetic retinopathy
+            \item Multiple liver sequelae in a UDCA trial
+          \end{itemize}
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Parallel events}
+  \begin{itemize}
+    \item Uncommon
+    \item Decisions
+      \begin{itemize}
+        \item Multiple strata?
+          \begin{itemize}
+            \item Diabetes: no
+            \item UDCA in PBC: yes
+          \end{itemize}
+          \item strata by covariate interactions
+      \end{itemize}
+    \item Data setup: stacked 
+    \item Analysis: robust variance
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Diabetic retinopathy}
+  \begin{itemize}
+    \item Two eyes per subject, one randomized to laser coagulation
+  \end{itemize}
+<<diabetic>>=
+juvenile <- 1*(diabetic$age < 20)
+coxph(Surv(time, status) ~ trt + juvenile + cluster(id), diabetic)
+@   
+\end{frame}
+
+\begin{frame}{Sequential events}
+  \begin{itemize}
+    \item Single stratum or multiple strata?
+      \begin{itemize}
+        \item Does the baseline risk reset to a new level after each event?
+        \item CGD data set: no
+        \item Repeat cardiac events: maybe
+      \end{itemize}
+    \item strata by covariate iteractions?
+    \item time scale: age, time since enrollment, time since last event, \ldots
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Models}
+  \begin{itemize}
+    \item Andersen-Gill model
+      \begin{itemize}
+        \item single stratum
+        \item an event is an event is an event
+      \end{itemize}
+    \item Prentice-Williams-Petersen
+      \begin{itemize}
+        \item new stratum for each event
+        \item time normally resets to zero
+        \item dangerous!
+      \end{itemize}
+    \item Wei, Lin, and Weissfeld
+      \begin{itemize}
+        \item pretend that we have parallel event data
+        \item never do this
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{cgd}
+<<cgd1>>= 
+cgd[1:13, c('id', 'treat', 'age', 'sex', 'tstart', 'tstop', 'status')]
+coxph(Surv(tstart, tstop, status) ~ treat + age + 
+      steroids + cluster(id), cgd)
+@
+\end{frame}
+
+\begin{frame}{Hidden covariates}
+  \begin{itemize}
+    \item Assume an important covariate $Z$ is not in the model
+    \item Single event model
+      \begin{itemize}
+        \item $\beta$ biased towards zero
+        \item amount is proportional to $se(\gamma Z)$
+      \end{itemize}
+    \item Multiple event model
+      \begin{itemize}
+        \item stratify by number of prior events, or
+        \item add number prior events as a covariate
+        \item $\beta$ is severely biased,  and can actually change sign
+      \end{itemize}
+    \item A random effect per subject can help
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{AG simplicity}
+  \begin{itemize}
+    \item For many studies, the coefficient(s) from an AG model often have
+      the same interpretation as an ordinary Cox model
+    \item higher rate $\leftrightarrow$ shorter time to next event
+    \item Cumultive hazard = E(number of events so far)
+    \item Survival curve = Pr(no events at all) is more complex, 
+      but often not of interest
+  \end{itemize}
+\end{frame}
