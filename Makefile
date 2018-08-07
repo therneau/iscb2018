@@ -5,8 +5,7 @@ PARTS = intro.tex \
         sequential.tex \
 	finegray.tex \
 	population.tex \
-        mcsa.tex \
-	final.tex
+        mcsa.tex 
 
 %.tex:%.Rnw
 	echo "library(knitr); knit('$<')" | R --slave
