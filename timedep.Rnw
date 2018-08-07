@@ -1,0 +1,266 @@
+<<echo=FALSE>>=
+library("survival", quietly=TRUE)
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#ffffff",
+               size='footnotesize',  
+               warning=FALSE, error=FALSE, prompt=TRUE)
+options(contrasts= c("contr.treatment", "contr.poly"),
+        show.signif.stars = FALSE, continue=" ", width=60)
+par(mar=c(4.1, 4.1, 1.1, 1.1))
+@ 
+
+\section{Time-dependent covariates}
+\begin{frame}
+  {\Large Model checks and time-dependent covariates}
+\end{frame}
+
+\begin{frame}{Model checks}
+  \begin{itemize}
+    \item We tend to assume
+      \begin{itemize}
+        \item Linear functional form
+        \item Additivity
+        \item Proportional hazards
+        \item Lack of leverage (outliers)
+      \end{itemize}
+    \item $\lambda_i(t) = \lambda_0(t) \exp(\beta_1x_1 + \beta_2 x_2 + \ldots)$
+    \item Is any of it true? 
+      \pause
+      \begin{itemize}
+        \item PH \emph{never} holds over long time periods \\
+          (exception: male/female death rates from age 50-90) \\
+        \item Linearity fails when $X$ has a wide range.  (creatinine)
+        \item Additivity is never perfectly true
+      \end{itemize} \pause
+  \end{itemize}
+\end{frame}
+          
+
+\begin{frame}{Time-dependent covariates}
+The Cox model likelihood is set up like a lottery.
+
+At each death time:
+\begin{itemize}
+  \item Risk set = set of subjects \emph{at risk} for death \\
+    (if they had died, we would have recorded it)
+  \item Score = $r = \exp(X \beta)$ = ``number of tickets''
+  \item $L = r_d / \sum r_i$ = Pr(the person who won, should have won)
+  \item Choose $\beta$ to maximize $L$
+\end{itemize}
+
+$$
+ C = \frac{\sum_{deaths} \mbox{number with lower score $r$ than the winner}}
+          {\sum_{deaths} number at risk}
+$$
+\end{frame}
+
+
+    \begin{frame}{Advantages}
+  \begin{itemize}
+    \item At each death time you only need to know who is present
+      \begin{itemize}
+        \item people can enter and leave
+        \item delayed entry
+      \end{itemize}
+    \item Covariates can be those \emph{relevant for this drawing}
+      \begin{itemize}
+        \item most recent lab tests
+        \item time delays (delayed action of a drug)
+        \item rate of change
+      \end{itemize}
+      \pause
+    \item easy coding 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Disadvantages}
+  \begin{itemize}
+    \item Today is all that matters
+      \begin{itemize}
+       \item Effects are assumed to be instantaneous
+      \end{itemize} \pause
+    \item Effects are constant (until next measurement)
+    \item Almost too easy to use
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{How to do it wrong}
+  \end{frame}
+
+\begin{frame}
+  \frametitle{Survival by treatment response}
+  \begin{itemize}
+    \item At the end of a trial a survival curve is made comparing those
+      who \emph{responded} to those who did not.
+      \begin{itemize}
+        \item responders have a better curve!
+        \item the p-value is $<.01$!
+        \item stop the presses! \pause
+      \end{itemize}
+    \item The result is guarranteed -- why? \pause
+    \item The original analysis of the Stanford study
+    \item Rediscovered every 3--5 years
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+  \frametitle{Simulation}
+  \begin{itemize}
+    \item Advanced lung cancer data set
+    \item Assume bi-monthly visits
+    \item Randomly mark 5\% of the subjects ``winners'' at each visit.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+<<fake, echo=FALSE>>=
+set.seed(1953)  # a good year
+nvisit <- floor(pmin(lung$time/61, 10))
+response <- rbinom(nrow(lung), nvisit, .05) > 0
+badfit <- survfit(Surv(time/365.25, status) ~ response, data=lung)
+par(mar=c(4.1, 4.1, .1, 1.1))  #remove space for a title
+plot(badfit, mark.time=FALSE, lwd=2, col=1:2, xmax=2,
+     xlab="Years post diagnosis", ylab="Survival", xaxs='r')
+legend(1.3, .85, c("Winners", "Losers"), 
+       col=2:1, lwd=2 , bty='n')
+text(1.6, .6, "P = .0006")
+@ 
+\end{frame}
+
+\begin{frame}
+The surprise is how \emph{big} the error can be.
+\begin{itemize}
+  \item Stanford Heart, time dependent transplant: .99 (.54, 1.8) 
+  \item Stanford Heart, ever transplant: .17 (.10, .28) 
+  \item Gail, ``Does cardiac transplantation prolong life?  A reassessment.''
+    Ann Int Med 1982.
+\end{itemize}
+\end{frame}   
+
+\begin{frame}{Cumultive dose received}
+\begin{itemize}
+  \item Does dose reduction harm patients?
+  \item x= cumulative dose received  \pause
+  \item x= fraction of expected  \pause
+  \item x= fraction of expected, to date
+  \item Redmond et. al, Cancer Treatment Reports
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Prophetic variables}
+  
+  Some time-dependent covariates are not predictors of an event as much as
+they are markers of a failure-in-progress:
+\begin{itemize}
+   \item Medication changes
+     \begin{itemize}
+     \item Cessation of diuretics in heart failure
+     \end{itemize}
+   \item Multiple-organ failure
+   \item Ventilation \pause
+   \item ``Have called the priest'' \pause
+   \item Tautologies: lab test Tuesday, progression Wed 
+   \item Consider time delays
+\end{itemize}
+\end{frame}
+\begin{frame}{Errors}
+  \begin{itemize}
+    \item Placebo controlled trial
+    \item Adverse reaction to active arm (rare, but expected)
+    \item ``Weeks on drug'' add to the form
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \scriptsize
+\begin{verbatim}
+data new; set old;
+    futime = fu_date - entry_dt;
+    tstart =0;
+    if (drug_weeks ne . and drug_weeks < futime/7) then do;
+       * one of the crossover patients;
+       tstop = drug_weeks *7; event = 0;   output;
+       tstart= tstop; tstop=futime; 
+       arm =0; event = status; output;  *cross to placebo;
+       end;
+    else do; * no crossover;
+      tstop=futime; event=status; output; 
+      end;
+
+proc phreg (tstart, tstop) * status(0) = arm;
+\end{verbatim}
+\normalsize
+\end{frame}
+
+\begin{frame}{Time delay}
+  \begin{itemize}
+    \item Delayed labs
+    \item UDCA
+    \item Long term prediction
+    \item Option in the \code{tmerge} function.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Immortal time bias}
+  Subjects are treated as `at risk' when they actually are not.
+  \begin{itemize}
+    \item At risk: If the subject had had an event, we would have seen and
+      recorded it. \pause
+    \item rhDNase study
+    \item Time gaps in the REP
+    \item Oscar winners live longer
+    \item ever prescribed inhaled corticosteroids = asthmatic
+    \item ``at least 2 instances'', then use the first one
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{More}
+  \begin{itemize}
+    \item Mark an adverse event as midway between visits
+    \item Delete subjects who do not complete treatment
+    \item Interpolate a lab value
+    \item Add ``average death rate'' as a covariate
+    \item Multi-state models create new opportunities for error
+    \item \ldots \pause
+    \item Process
+      \begin{itemize}
+        \item Think through special cases
+        \item Create the (start, stop] data set
+        \item Print out a portion and \emph{read} it.
+        \item Think, pause, think
+        \item If results are too good to be true \ldots
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Summary}
+  Time dependent covariates are a wonderful tool.
+  \begin{enumerate}
+    \item You must not look into the future. \pause
+    \item Avoid prophetic variables.  \pause
+    \item It's all too easy to look into the future. \pause
+    \item Duration or rate variables work surprisingly rarely. \pause
+    \item Bad things happen if you look into the future. \pause
+    \item Short term prediction is uninteresting. \pause
+    \item It is challenging to draw survival curves.
+ \end{enumerate}
+\end{frame}
+
+\begin{frame}{Survival curves}
+  \begin{itemize}
+    \item By definition, a survival curve is a look into tomorrow, 
+      given \emph{what you know today}.
+    \item In a time dependent model, looking ahead requires knowledge
+      of future covariates.
+      \begin{itemize}
+        \item you don't know them
+        \item so you have to guess
+        \item This is very, very hard to do effectively.  \pause
+        \item Internal and external covariates
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+

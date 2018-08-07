@@ -77,6 +77,13 @@ statefig(cbind(4,1), cmat)
   \end{itemize}
 \end{frame}  
 
+\begin{frame}
+<<hplot>>=
+hexbinplot(I(futime/365.25) ~ age, data=nafld1, colramp=rainbow,
+           xlab="Age at entry", ylab="Years of follow-up")
+@ 
+\end{frame}
+
 \begin{frame}{tmerge}
 <<tmerge>>=
 frame()
@@ -91,7 +98,8 @@ text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
 
 \begin{frame}[fragile]{R code}
 <<echo=TRUE, size='scriptsize'>>=
-data1 <- tmerge(nafld1[, 1:6], nafld1, id,  
+keep <- c("id", "age", "male", "bmi", "ntime")
+data1 <- tmerge(nafld1[, keep], nafld1, id,  
                 death= event(futime, status))
 data1 <- tmerge(data1, subset(nafld3, event=="nafld"), id,
                 nafld = tdc(days))
@@ -262,6 +270,32 @@ with(data1, table(mcount, mstate))
   \end{itemize}
 \end{frame}
 
+\begin{frame}{Time scale}
+  \begin{itemize}
+    \item Time since diagnosis makes some sense for the NAFLD cases,
+      but time since ``your number was chosen out of a hat'' for the
+      controls?
+      \begin{itemize}
+        \item Age and sex need to be in the model, and they need to be 
+          \emph{right}
+        \item The population death rate ranges from .03--500 /1000 over
+          this age span; a small lack of fit in the age*sex modeling 
+          can dominate all other covariates.
+      \end{itemize}
+    \item Age as a time scale compares like with like; age is not in
+      model.  We can also stratify on sex if desired.
+    \item Time since index + case-control matching compares each subject
+      to others of the same age and sex. 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{2011 Minnesota death rates}
+<<death>>=
+matplot(20:100, survexp.mn[21:101, ,"2011"]*365000, type='l', lwd=2,
+        col=2:1, log='y', xlab="Age", ylab= "Deaths/1000")
+@ 
+
+
 \begin{frame}[fragile]{Fits}
 <<mfit1, echo=TRUE, size="small">>=
 nfit1 <- coxph(Surv(age1, age2, death) ~ male + nafld,
@@ -281,13 +315,17 @@ nfit4c <- coxph(Surv(age1, age2, mstate=="3mc") ~ male + nafld,
 
 \begin{frame}[fragile]
 <<mfit1b>>=
-mtable <- matrix(NA, 2, 4)
-dimnames(mtable) <- list(c("metabolic", "death"),
-                         c("0mc","1mc", "2mc", "3mc"))
-mtable[1,1:3] <- c(coef(nfit4a)[2], coef(nfit4b)[2], coef(nfit4c)[2])
-mtable[2,1:4] <- coef(nfit3)[2:5]
+mtable <- matrix(NA, 11, 3)
+dimnames(mtable) <- list(c("Alive -> Dead", "Alive -> Dead", "","0 MC -> Dead", 
+                           "1 MC -> Dead", "2 MC -> Dead", "3 MC -> Dead", "",
+                           "0 MC -> 1 MC", "1 MC -> 2 MC", "2 MC -> 3 MC"),
+                         c("male sex", "NAFLD", "mcount"))
+mtable[1, 1:2] <- coef(nfit1)
+mtable[2, 1:3] <- coef(nfit2)
+mtable[4:7,1:2] <- cbind(coef(nfit3)[1], coef(nfit3)[-1])
+mtable[9:11, 1:2] <- rbind(coef(nfit4a), coef(nfit4b), coef(nfit4c))
 
-print(round(exp(mtable), 2), naprint="")
+print(round(exp(mtable), 1), na.print="")
 @ 
   \begin{itemize}
     \item The incremental impact of NAFLD on death decreases
@@ -296,12 +334,118 @@ print(round(exp(mtable), 2), naprint="")
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
-<<mfig>>=
+\begin{frame}{Other summaries}
+  \begin{itemize}
+    \item Hazard rates between states
+    \item $p(t)$, state vector at time $t$
+    \item Mean time in state
+    \item Number of visits to each state
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Predicting the future}
+  \begin{itemize}
+    \item When there are time-dependent covariates, how do you
+    predict future outcomes?
+    \item What do you want to predict?
+      \begin{itemize}
+        \item Outcome risk given baseline covariates, covariates do not change?
+        \item Outcome risk given covariates, covariates evolve?
+          \pause
+      \end{itemize}
+    \item Current smoker:
+      \begin{itemize}
+        \item risk of MI for this subject, if they continue smoking
+        \item risk for a population of current smokers, knowing some
+          will quit
+      \end{itemize}
+    \item What about systolic blood pressure?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Primary biliary cirrohsis}
+  \begin{itemize}
+    \item Progressive autoimmune disease
+    \item Continual inflammation slowly creates scar tissue
+    \item Time dependent risk score fits better
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Primary biliary cirrohsis}
+<<pbc>>=
+pfit <- survfit(Surv(time, status==2) ~ edema, pbc)
+plot(pfit, xscale=365.25, col=c(1,2,4), lwd=2,
+     xlab="Years from study entry")
+legend(3000, .9, paste0("Edema ", c(0, .5, 1), ", n= ",table(pbc$edema)), 
+       col=c(1,2,4), lty=1, lwd=2, bty='n')
+@ 
+\end{frame}
+
+\begin{frame}
+<<pbc2>>=
+tdata <- data.frame(bili=1, edema=0, age=51, albumin=3.5) 
+fit1 <- coxph(Surv(time, status==2) ~  age + log(bili) + edema + 
+              log(albumin), pbc, subset=(1:312))  # those with sequential data
+pred1 <- survfit(fit1, newdata = tdata)
+
+# create the time dependent version
+p1 <- pbcseq[!duplicated(pbcseq$id),]
+p2 <- tmerge(p1[, c("id", "age", "sex")], p1, id=id,
+             death= event(futime, 1*(status==2)))
+p2 <- tmerge(p2, pbcseq, id, bili= tdc(day, bili), 
+             edema= tdc(day, edema), albumin= tdc(day, albumin))
+fit2 <- coxph(Surv(tstart, tstop, death) ~ age + log(bili) +
+              edema + log(albumin), p2)
+pred2 <- survfit(fit2, newdata=tdata)
+plot(pfit, xscale=365.25, col=c(1,2,4), lwd=2,
+     xlab="Years from study entry")
+#legend(3000, .9, paste0("Edema ", c(0, .5, 1), ", n= ",table(pbc$edema)), 
+#       col=c(1,2,4), lty=1, lwd=2, bty='n')
+lines(pred2, col=5)
+lines(pred1, col=6, conf.int=FALSE)
+@ 
+\end{frame}
+
+\begin{frame}{Choices}
+  \begin{enumerate}
+    \item Use only baseline values for the fit
+      \begin{itemize}
+        \item Survival given that baseline
+        \item Subjects will evolve, and that gets built into the coefficients
+          and the baseline hazard
+        \item The PH assumption may be badly strained
+      \end{itemize}
+    \item ``Baseline'' values at future times (landmark analysis)
+    \item Use time-dependent covariates for the fit
+      \begin{enumerate}
+        \item Predict for fixed covariates
+        \item Create a covariate path (delicate)
+        \item Use a population average
+        \item Encode the path as states and refit
+      \end{enumerate}
+    \item Various bad ideas
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Aalen-Johansen}
+<<mfig1, echo=TRUE, error=TRUE>>=
 istate <- factor(data1$mcount, 0:3, c('0mc', '1mc', '2mc', '3mc'))
+mfig <- survfit(Surv(age1, age2, mstate) ~ nafld, data=data1,
+                istate=istate, id=id, se=FALSE, start.time=50)
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+<<mfig2, echo=TRUE>>= 
 fakeid <- data1$id + data1$nafld/2
 mfig <- survfit(Surv(age1, age2, mstate) ~ nafld, data=data1,
                 istate=istate, id=fakeid, se=FALSE, start.time=50)
+print(mfig, digits=2)
+@ 
+\end{frame}
+
+\begin{frame}
+<<mfig3>>=
 plot(mfig, lty=1:2, col=rep(c(3,5,4,1,2), each=2), yscale=100,
      xlab="Age", ylab="P(state)")
 legend(55, .95, c("0 mc", "1 mc", "2 mc", "3 mc", "Dead"), lty=1, 
@@ -310,7 +454,7 @@ legend(55, .95, c("0 mc", "1 mc", "2 mc", "3 mc", "Dead"), lty=1,
 \end{frame}
 
 \begin{frame}[fragile]{Mean years in state, starting at age 50}
-<<mfig2>>=
+<<mfig4>>=
 tmat <- matrix(summary(mfig, rmean=100)$table[,"rmean"], 2, 5)
 dimnames(tmat) <- list(c("Control", "NAFLD"), 
                        c("1 mc", "2 mc", "3 mc", "Death", "0 mc"))
@@ -318,5 +462,86 @@ t2 <- tmat[,c(5,1,2,3)]
 t2 <- cbind(t2, Total =rowSums(t2))
 round(t2, 1)
 @ 
+
+  \begin{itemize}
+    \item This is the non-parametric form of 3.1, prediction for a control
+    subject who does not switch from control to NAFLD. 
+    
+    \item For simple alive-dead, these curves are equivalent to 
+    Simon and Makuch, Statistics in Medicine, 1984.
+  \end{itemize}
 \end{frame}
+
+
+\begin{frame}{Method 1, baseline covariates}
+  \begin{itemize}
+    \item NAFLD subjects never(?) become non-NAFLD
+    \item Control subjects need to have full follow-up
+      \begin{itemize}
+        \item Duplicate the joint NAFLD/control subjects
+        \item \Sexpr{sum(nafld1$ntime > 0, na.rm=T)} out of \Sexpr(sum(nafld1$nafld)} cases
+        \item The NAFLD copy starts later 
+        \item AJ estimate: copy 2 needs a new id
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+<<data2>>=
+data2 <- data1
+data2$nafld <- data2$nafld[match(data2$id, data2$id)]  # no time dependent
+tdata <- subset(data1, nafld==1 & ntime>0)
+tdata$id <- tdata$id + .1
+data2 <- rbind(data2, tdata)
+
+istate2 <- factor(data2$mcount, 0:3, c('0mc', '1mc', '2mc', '3mc'))
+mfig2 <- survfit(Surv(age1, age2, mstate) ~ nafld, data=data2,
+                istate=istate2, id=id, se=FALSE, start.time=50)
+
+temp <- matrix(summary(mfig2, rtime=100)$table[, "rmean"], 2, 5)
+tmat2 <- rbind(Control2 = temp[1,], tmat)
+t2 <- tmat2[,c(5,1,2,3)]
+t2 <- cbind(t2, Total =rowSums(t2))
+round(t2, 1)
+
+i1 <- sum(nafld1$ntime > 0, na.rm=T) 
+i2 <- table(nafld1$nafld)
+@ 
+
+\begin{itemize}
+  \item \Sexpr{i1} out of \Sexpr{i2[1]} controls get a little more follow-up
+  \item During that extra follow-up they are at higher risk
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Time in state, based on the fitted model}
+  \begin{itemize}
+    \item Simplest method is 3.1: time-dependent fit + prediction for static
+      covariates
+      \begin{enumerate}
+        \item Fit the TD models for each state to state transition
+          (\code{nfit3, nfit4a, nfit4b, nfit4c})
+        \item For each model, get the predicted hazard functions
+          $\lambda_{ij}(t$, control) and $\lambda_{ij}(t$, NAFLD)
+        \item Compute Aalen-Johansen estimates using these values.
+        \item Alternate: use the \code{mstate} package
+      \end{enumerate}
+    \item Better is method 1: time-fixed covaraite fit + static prediction
+      \begin{enumerate}
+        \item Create the doubled data set (full follow-up for controls that
+          become cases, as controls)
+        \item Cox model fits for each transition, with robust variance
+        \item Hazard estimates and AJ computation as before
+      \end{enumerate}
+    \item Better is method 3.3: time-dependent fit + population curves
+      \begin{enumerate}
+        \item Fit the TD models
+        \item Predicted hazard curves for \emph{each covariate path} =
+          334 for controls, only 1 for NAFLD; overall hazard for controls is
+          a time-weighted average.
+        \item Use these to compute Aalen-Johansen values
+      \end{enumerate}
+  \end{itemize}
+\end{frame}
+
 

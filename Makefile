@@ -1,6 +1,7 @@
 PARTS = intro.tex \
 	aalen.tex \
 	mgus.tex \
+	timedep.tex \
         nafld.tex \
         sequential.tex \
 	finegray.tex \
