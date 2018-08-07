@@ -1,0 +1,49 @@
+\documentclass[11pt]{beamer}
+\usepackage{amsmath, fancyvrb}
+
+\title[Compteting Risks]{Multi-state models}
+\author[Therneau]{Terry Therneau}
+\institute{Department of Health Science Research \\ Mayo Clinic}
+\date{Nov 2017}
+\logo{\includegraphics[height=1.5cm]{figures/MC_stack_4c.pdf}}
+
+\addtobeamertemplate{navigation symbols}{}{%
+    \usebeamerfont{footline}%
+    \usebeamercolor[fg]{footline}%
+    \hspace{1em}%
+    \insertframenumber/\inserttotalframenumber
+}
+\include{beamertoc.tex}
+%\setbeamertemplate{section in toc}[sections numbered]
+%\setbeamertemplate{subsection in toc}[subsections numbered]
+%
+\newcommand{\myfig}[1]{\includegraphics[height=\textheight, width=\textwidth]
+   {figures/#1.pdf}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\lrr}{$\longrightarrow${}}
+
+\newcommand{\twiddle}{\ensuremath{\sim}}
+\DefineVerbatimEnvironment{Example}{Verbatim}{%
+codes={\catcode`~=\active},defineactive=\def~{\twiddle}}
+
+\include{knitr}
+
+\begin{document}
+\begin{frame}
+   \titlepage
+\end{frame}
+
+%\begin{frame}
+%  \frametitle{Table of Contents}
+%  \tableofcontents
+%\end{frame}
+
+\include{intro}
+\include{aalen}
+\include{mgus}
+\include{nafld}
+\include{sequential}
+\include{finegray}
+\include{population}
+\include{mcsa}
+\end{document}
