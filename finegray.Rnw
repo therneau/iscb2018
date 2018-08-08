@@ -85,7 +85,6 @@ layout(1)
 @ 
 \end{frame}
 
-\section{Fine-Gray model}
 \begin{frame}{Fine-Gray model}
 \begin{itemize}
   \item In the prior fits we have simple models for $\lambda_{12}$=

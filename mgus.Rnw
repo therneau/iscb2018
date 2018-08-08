@@ -20,7 +20,6 @@ crisk <- function(what, horizontal = TRUE, ...) {
 @ 
 
 \section{Competing risk}
-\subsection{Overview}
 \begin{frame}
 {\Large Competing risks}
 \end{frame}

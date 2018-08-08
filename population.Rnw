@@ -1,5 +1,4 @@
-\section{Important side topics}
-\subsection{Population averages}
+\section{Population averages}
 
 \begin{frame}
   {\Large Population averages}
@@ -148,10 +147,4 @@
   \end{itemize}
 \end{frame}
 
-
-\subsection{Time dependent covariates}
-
-\begin{frame}
-  {\Large Time dependent covariates}
-\end{frame}
 

@@ -1,0 +1,508 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\title{Analysis of the NAFLD data set}
+\author{Terry Therneau}
+
+\addtolength{\textwidth}{1in}
+\addtolength{\oddsidemargin}{-.5in}
+\setlength{\evensidemargin}{\oddsidemargin}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\begin{document}
+<<echo=FALSE>>=
+opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
+               fig.with=7, fig.height=5.5, fig.path="figures/",
+               out.width="\\textwidth", out.height="!", device="pdf",
+               cache=FALSE, background="#FFFFFF",
+               warning=FALSE, error=FALSE)
+par(mar=c(5.1,4.1, .2, .2))  # we will float figures, so no titles
+library(survival, quietly=TRUE)
+library(splines, quietly=TRUE)
+options(show.signif.stars=FALSE)  # display statistical intelligence
+load('nafld.rda')
+table2 <- function(...) table(..., useNA="ifany")
+overlap <- with(nafld3, sum(event=="nafld" & days > 0)) #case and control
+@ 
+\maketitle
+
+\section{NAFLD}
+\subsection{Background}
+The NAFLD data set presents allows for some quite interesting survival 
+analyses.  
+The primary reference for the study is Allen, et al \cite{Allen2018}.
+The incidence of Non-alcoholic fatty liver disease (NAFLD) has been rising
+rapidly in the last decade and it is now one of the main drivers of
+hepatology practice \cite{Tapper2018}.
+It is essentially the presence of excess fat in the
+liver, and parallels the ongoing obesity epidemic.
+(The long name is, I suspect, due to the fact that decades ago having a 
+p\^at\'e liver was usually associated with excess alcohol.)
+Non-alcoholic steatohepatitis (NASH) occurs when this excess fat is accompanied
+by inflammation, and is the most serious side of the disease.
+NASH can be accurately diagnosed by elastography: a low frequency
+generator is placed on the abdomen, and the differential propogation of the
+sound waves used to discriminate fat from other tissue using either 
+ultrasound or magnetic resonance imaging (MRI). 
+Accurate diagnosis of NASH currently requires a needle biospy with its
+subsequent risk of complications.
+
+\subsection{Data}
+The Rochester Epidemiology Project (REP) is a cooperative venture between
+multiple clinics, and has a record of essentially all medical care for
+residents of Olmsted County, Minnesota from the early 1970s forward.  
+Using REP resources, the current study constructed a community cohort of
+all adult NAFLD subjects from 1997 to 2014  along with 4 potential controls
+for each case.
+Because NAFLD is often a disease of exclusion, a NAFLD diagnosis followed
+shortly by the diagnosis of another liver disease is considered a false
+positive.  For this study we only consider ``confirmed'' NAFLD, i.e., if
+someone were diagnosed on 2001-06-20, the index date for confirmed NAFLD 
+would be 2002-06-20, assuming that another liver diagnosis, death, or
+incomplete follow-up did not intervene.  Control subjects are matched on
+age and sex, and their follow-up also commences on this latter date.
+
+To protect patient confidentiality all time intervals are in days since
+this index date, none of the dates from the original data were retained.
+Subject age is their integer age at the index date, and the subject
+identifier is an arbitrary integer.
+
+The data consists of 4 R data sets.
+\begin{itemize}
+  \item \code{nafld1} has one observation for each subject containing
+    baseline covariates.
+  \item \code{nafld2} has selected post-index covariate values.  
+    A given subject can have anywhere from 0 to several hundred rows.
+  \item \code{nafld3} has subject outcomes, one per line.  Outcomes such
+    as hyperlipidemia may appear on multiple dates, each corresponding to
+    a patient visit.
+\end{itemize}
+The \code{nafld2} data set has been restricted to time points after the
+index date, but \code{nafld3} needs events from both before and after to
+set a subject's starting state in the multi-state models,
+e.g., hypertension before the index date.
+
+The last data set \code{nafld0} is special to the REP.  A given
+subject may be in the Olmsted County population for only a short period,
+since birth, or even for disjoint intervals.  Hence the definition of
+the at risk period is a bit more complicated than a single follow-up time.
+This data set contains begin/end intervals for each subject.  
+We have eliminated information before the index date, so each subject's
+first interval starts at 0 in the data set.  
+Most of the subjects have a single interval,
+(\Sexpr{table(table(nafld0$id))[1]} out of \Sexpr{nrow(nafld1)}).  %$
+
+\subsection{Cases and controls}
+A recurring and fundamental mistake in surival analysis is immortal time
+bias, variations of which occur whenever either covariate values or
+patient selection at a particular time are allowed to ``peek into the
+future''.
+When selecting the age/sex matched controls for a given case at age $a$,
+it was important to \emph{not} exclude subjects who will become NAFLD at
+some later age $>a$ as potential matches.
+(Convincing an investigator of this fact can sometime be very hard.)
+In this data set \Sexpr{overlap}
+of the NAFLD cases were also selected as controls.
+They appear in the \code{nafld1} data set as a control, since that was their
+status at their first study date.
+There are at least three ways to analyse them.
+\begin{enumerate}
+  \item One approach is to enter such a subject into the 
+    study twice,
+    from the first index until study end, copy 1 of the subject 
+    is a control, and from NAFLD to
+    study end copy 2 of the subject is a case.  This will in theory require
+    using a robust variance since the two copies are obviously not independent.
+  \item Treat NAFLD status as a time dependent covariate.  The hazard ratio is
+    now the comparison of someone with current NAFLD to others 
+    who do not.  
+  \item Treat them as a single control. This reduces our sample size of
+    NAFLD subjects however.  
+    Note that this is approach is statistically justified since a 
+    ``new'' NAFLD is accepted or rejected based on something in their past,
+    i.e., prior use as a control. 
+\end{enumerate}
+Many of the issues in this choice are philosophical and I haven't 
+digested them all.
+
+\subsection{Time dependent NAFLD}
+\begin{figure}
+<<timeline, echo=FALSE>>=
+frame()
+plot(c(0, 75), c(0,2), xlab="Time", ylab="", yaxt='n', type='n')
+segments(c(10, 26, 34), c(1,1,1), c(18, 31, 65), c(1,1,1), lwd=2)
+arrows(c(5, 15, 21, 26, 31, 70), rep(c(1.4, .6), 3), c(5, 15, 21, 26, 31, 70),
+       rep(c(1.05, .95), 3), angle=20, length=.1)
+text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
+     c("early", "within", "gap", "leading", "trailing", "late"))
+@ 
+ \caption{Timeline for a hypthetical subject who moved to the region at
+age 10, left for college at 18, returned at 26 for a residency, left again
+for further training at ages 31--32, returned at 33, and the retired to a
+warmer climate at age 70.}
+\label{fig:timeline}
+\end{figure}
+
+Our primary data set will use NAFLD as a time-dependent covariate.
+The \code{tmerge} routine allows for easy creation of time dependent
+covariates and endponts, and
+also accomodates the subjects with multiple follow-up intervals.
+Multiple calls set up the baseline data and time intervals, 
+add the endpoint (death), and finally add in the time-dependent covariates. 
+(Note that if we wanted to do analysis 3 above, we could just just the
+\code{nafld1} data set directly).
+The \code{tmerge} function automatically takes care of an important 
+distinction with tied times, namely that if subject Jones has a death on
+day 400 and subject Smith converts from control to NAFLD on day 400,
+then the time dependent covariate changes \emph{after} that event occurs.
+(Short variable names like \code{diab} for diabetes were chosen
+to help printouts fit the page width.)
+
+<<data1>>=
+data1 <- tmerge(nafld1[,1:8], nafld0, id=id, tstart=begin, tstop=end) 
+data1 <- tmerge(data1, subset(nafld3, event=="death"), id=id, 
+                              death= event(days))
+data1 <- tmerge(data1, subset(nafld3, event=="nafld"), id, 
+                nafld= tdc(days))
+data1 <- tmerge(data1, subset(nafld3, event=="diabetes"), id,
+                diab= tdc(days), e1= event(days))
+data1 <- tmerge(data1, subset(nafld3, event=="htn"), id, 
+                htn= tdc(days), e2= event(days))
+data1 <- tmerge(data1, subset(nafld3, event=="dyslipidemia"), id, 
+                dyslip = tdc(days), e3= event(days))
+attr(data1, 'tcount')
+@ 
+
+<<echo=FALSE>>=
+tc <- attr(data1, 'tcount')   # shorter name for use in Sexpr below
+icount <- table(table(nafld3$id)) #number with 1, 2, ... intervals
+ncount <- sum(nafld3$event=="nafld")
+@ 
+
+The \code{tcount} attribute tells us a lot about the merger process.
+Each addition of a new endpoint or covariate to the data generates one 
+row in the table.  Column labels are explained by figure \ref{fig:timeline}.
+\begin{itemize}
+  \item There are \Sexpr{tc[1,7]} deaths, which by defnition fall at the
+    trailing end of a subject's observation interval.
+  \item There are \Sexpr{tc[2,2]} nafld calls that fall after the end
+    of follow-up (`late').
+    These are subjects whose first NAFLD fell within a year of the end of
+    their timeline, and the one year addition for ``confirmed'' pushed them
+    over the end.  Since we can't actually know that they had a full year
+    without a subsequent liver diagnosis, including them in the data set at
+    all was an oversight.  
+   \item The additional year delay for confirmed NAFLD pushed another  
+     \Sexpr{tc[2,1]} into a gap in their timeline.
+    (Timeline intervals before entry were removed from \code{nafld3},
+    in the interest of confidentiality, so these end up as `early' in
+    the table).
+    About \Sexpr{round(100* icount[1]/sum(icount))}\% of subjects have holes
+    in their timeline, so the fact that about 1\% (\Sexpr{tc[2,1]} out
+    of \Sexpr{ncount- tc[2,2]} would then hit a gap is not particularly
+    surprising.
+  \item \Sexpr{tc[3,1]} of the diabetes diagnoses are before entry, i.e., 
+    these are the prevalent cases.  One diagnosis occured on the last 
+    follow-up date (`trailing').
+  \item A small number of diabetic diagnosis also occur in a gap. Further
+    investigation showed these to be subjects who had a Mayo visit
+    while not a resident of the region.
+\end{itemize}
+
+Such a detailed look at data set construction may seem overmuch, but our
+point is that all of these issues occur with covariate and event timing
+in large data sets. 
+Some sort of decision has to be made, and it is better to look and understand
+than to blindly accept some programming default.
+
+\subsection{Simple counts}
+<<table1, echo=FALSE>>=
+tcount <- function(data) {
+    first <- !duplicated(data$id)
+    data2 <- subset(data, first, c(age, male, bmi, diab, htn, 
+                                   dyslip, death))
+
+    temp1 <- sapply(data2, mean, na.rm=TRUE)
+    temp2 <- sapply(data2, function(x) diff(quantile(x, c(.25, .75), na.rm=TRUE)))
+    n <- nrow(data2)
+    count <- function(x) 100*x
+    c(n, temp1[1], temp2[1], count(temp1[2]), count(1-temp1[2]),
+      temp1[3], temp2[3], count(temp1[4:7]))
+    }
+                
+tab1 <- rbind(tcount(data1), tcount(subset(data1, nafld==0)),
+              tcount(subset(data1, nafld==1)))
+dimnames(tab1) <- list(c("All subjects", "Control", "Case"),
+                       c("N", "age(mean)", "age (IQR)", "male %", "female %",
+                         "bmi(mean)", "bmi (IQR)",
+                         "diabetes %", "htn %", "dyslipidemia %", "deaths %"))
+round(t(tab1), 1)
+@ 
+The above table gives counts as of the index date for the control subjects
+and as of the NAFLD date for the NAFLD subjects. 
+(It does not agree with \cite{Allen2018}; we later found a double counting
+mistake in the creation of that table, which thankfully did not affect any other
+portions of the analysis.)
+
+\section{Time to death}
+\subsection{Overall survival}
+<<sfig1, fig.cap='Survival curves for NAFLD vs. control subjects, on age scale and on time since entry scale.'>>=
+data1$age1 <- data1$age + data1$tstart/365.25
+data1$age2 <- data1$age + data1$tstop/365.25
+sfit1 <- survfit(Surv(tstart, tstop, death) ~ male + nafld, data1)
+sfit2 <- survfit(Surv(age1, age2, death) ~ male + nafld, data1,
+                 start.time=30)
+oldpar <- par(mfrow=c(1,2), mar=c(5,5,1,1))
+plot(sfit1, xscale=365.25, fun="event", lwd=2, col=c(1,1,2,2), lty=c(2,1,2,1),
+     xlab="Years from index date", ylab="Deaths")
+legend(1, .35, c("Control, female","NAFLD, female", "Control, male",
+                 "NAFLD, male"), col=c(1,1,2,2), lty=c(2,1,2,1), lwd=2, bty='n')
+plot(sfit2, fun="event", lwd=2, col=c(1,1,2,2), lty=c(2,1,2,1),
+     xlab="Age", ylab="Deaths")
+par(oldpar)
+@   
+
+Figure \ref{fig:sfig1} shows survival curves for the data on both age scale, and
+time since the index date.  
+The curves for female NAFLD subjects and male control subjects almost overlay,
+and this will be reprised in the Cox model coefficients for male gender and
+for NAFLD; they each increase the death rate by about 50\% (1.5 fold).
+
+\subsection{Initial fits}
+Now for the analysis.
+A first question is what time scale to use.
+There are three obvious choices.
+\begin{itemize}
+ \item Fits on the ``time since entry'' scale are the obvious approach 
+   for clinical
+trial data, where due to randomization treated and untreated subjects are
+the same at entry.
+A Cox model compares each subject who has an event to all others who ``could
+have had'' the event and who share the same baseline risk.
+In the NAFLD data set, however, time since discovery of NAFLD is not nearly
+as compelling due to the unknown, and possibly quite long, duration of the
+condition prior to detection. 
+For the controls the time since ``your identifier was picked out of a hat''
+is completely odd. \\
+If this scale is used, then age and sex need to also be in
+the model, and they need to be \emph{right}.
+The yearly death rate ranges from .03 to 500 per thousand for this population
+and age range; any small lack of fit in the age*sex modeling 
+can dominate all other covariates.
+
+    \item Use age as the time scale.  This naturally matches like with like.
+The model can go further and stratify on sex, so that proportional hazards is
+sidestepped there as well.  
+One downside is that we do not get a coefficient estimate
+for age, but that is very minor since we already know that age is related
+to the outcomes.
+
+\item A third option is the use a matched analysis.  Each case/control set
+is a separate stratum with follow-up time used in the stratum.  This also
+matches on age and sex, but raises some technical and programming issues if
+we want further summaries than the hazard ratio.
+\end{itemize}
+
+Take a quick look at follow-up time.
+As expected, the age effect is dominating.
+There is a statistically significant non-linear effect of age,
+however, figure \ref{fig:cfit1} shows that the effect is very close to
+log-linear.  
+The simple tests for non proportional hazards are not remarkable,
+but figure \ref{fig:zp1} shows a possibly interesting early effect for
+age, and a strong quadratic one for NAFLD.  
+For the latter the simple test for a non-zero linear slope was clearly
+insufficient.
+<<cfit1, fig.cap="Estimated age effect from the model on fu-time scale">>=
+cfit1 <- coxph(Surv(tstart, tstop, death) ~ pspline(age) + male + nafld, 
+               data=data1)
+cfit1
+termplot(cfit1, term=1, se=TRUE)  # examine the shape for age
+
+zp1 <- cox.zph(cfit1, transform="identity")
+zp1
+@ 
+
+\begin{figure}
+<<zp1b, echo=FALSE>>=
+oldpar <- par(mfrow=c(2,2), mar=c(5,5,1,1))
+plot(zp1[1], resid=FALSE, xlab="Time since enrollment")
+abline(h=coef(cfit1)[1], col=2, lty=2)
+plot(zp1[2], resid=FALSE, xlab="Time since enrollment")
+abline(h=coef(cfit1)[2], col=2, lty=2)
+plot(zp1[3], resid=FALSE, xlab="Time since enrollment")
+abline(h=coef(cfit1)[3], col=2, lty=2)
+par(oldpar)
+@ 
+\caption{Estimated $\beta(t)$ functions for three covariates, in a
+model using time since enrollment.}
+\label{fig:zp1}
+\end{figure}
+
+A fit on age scale is more revealing about the NAFLD effect.
+The test for PH is now highly significant. 
+Separating the zph test by male and female leads to 
+figure \ref{fig:zp2}, which clearly shows the interaction.  
+For males the effect of
+NAFLD is a classic proportional hazard effect, increasing their
+risk by 1.6 fold across age, while for females the effect is
+much larger at younger ages.
+Interestingly, the overll average NAFLD effect for females is about the same
+size.
+
+<<cfit2>>=
+cfit2 <- coxph(Surv(age1, age2, death) ~ nafld + male, data1)
+cfit2
+
+cox.zph(cfit2)
+
+cfit2m <- coxph(Surv(age1, age2, death) ~ nafld, data1,
+                subset= (male==1))
+cfit2f <- coxph(Surv(age1, age2, death) ~ nafld, data1,
+                subset= (male==0))
+round(c(female = cfit2f$coef, male = cfit2m$coef),2)
+@ 
+
+\begin{figure}
+<<zp2, echo=FALSE>>=
+cfit2m <- coxph(Surv(age1,age2, death) ~ nafld, data1, subset=(male==1))
+cfit2f <- coxph(Surv(age1,age2, death) ~ nafld, data1, subset=(male==0))
+oldpar <- par(mfrow=c(1,2), mar=c(5,5,1,1))
+plot(cox.zph(cfit2m, transform= 'identity'), resid=FALSE, xlab='Age',
+     ylim=c(-.5, 2.5))
+abline(h = coef(cfit2m), lty=2, col=2)
+plot(cox.zph(cfit2f, transform= 'identity'), resid=FALSE, xlab='Age',
+     ylim=c(-.5, 2.5))
+abline(h = coef(cfit2f), lty=2, col=2)
+par(oldpar)
+@ 
+\caption{Estimated NAFLD effect for males (left panel) and females (right).
+The estimated overall coefficients for each separate fit is in red.}
+\label{fig:zp2}
+\end{figure}
+
+To better understand what is going on make a simple table of the
+absolute hazards of death over fixed age intervals.  
+Such tables of observed and expected are quite common in epidemiology where
+they are called ``person-years'' analyses.
+We will pick age epochs that have similar numbers of deaths.
+The \code{pyears} function creates tables with the number of events and the
+total amount of follow-up time in each cell.
+
+<<rate1, fig.cap="Death rates by sex and age group.  Dashed lines are NAFLD and solid are control">>=
+dtime <- with(data1, age2[death==1])
+round(quantile(dtime, 1:9/10),1)  # use 50, 65, 75, 85
+agecut <- tcut(data1$age1, c(0, 50, 65, 75, 85, 200),
+               c("<=50", "50-65", "65-75", "75-85", ">85"))
+pyfit <- pyears(Surv(age2-age1, death) ~ agecut + nafld + male, data1,
+                scale=1000)
+rate <- pyfit$event/pyfit$pyears
+
+# reshape this for printing and plotting.  A 5x4 matrix is handier than 5x2x2
+r2 <- matrix(rate, ncol=4) 
+dimnames(r2) <- list(rownames(rate), c("Female control", "Female NAFLD", 
+                  "Male control", "Male NAFLD"))
+round(r2,1)
+
+matplot(1:5, r2, log='y', pch="ffmm", col=c(2,2,1,1), lty=c(1,2,1,2),
+        type= 'b', xlab="", xaxt='n', ylab="Death rate per 1000")
+axis(1, 1:5, levels(agecut))
+@  
+
+Figure \ref{fig:rate1} shows yearly death rates per 1000.
+We see that NAFLD levies a particularly heavy burden on younger females,
+in terms of relative rates, 
+while the hazard ratio for males is fairly constant.
+Interestingly, the NAFLD effect for females is  close to constant on
+the $\sqrt{\mbox{rate}}$ scale.  (And what do we do with that fact?)
+
+\section{Multi-state analysis}
+\begin{figure}
+<<nfig1>>=
+states <- c("No comorbidity", "1 comorbidity", "2 comorbidities", 
+            "3 comorbitities", "Death")
+cmat <- matrix(0, 5,5)
+cmat[,5] <- 1
+cmat[1,2] <- cmat[2,3] <- cmat[3,4] <- 1
+cmat[1,3] <- cmat[2,4] <- 1.6
+cmat[1,4] <- 1.6
+dimnames(cmat) <- list(states, states)
+statefig(cbind(4,1), cmat)
+@   
+\caption{Schema of the multistate model.}
+\label{statefig}
+\end{figure}
+
+NAFLD is closely linked to obesity and metabolic syndrome, Allen considered
+the occurrence of three dysmetabolic comorbidities --- hypertension,
+dyslipidemia, and diabetes.  
+Analysis was then based on a the 5 state shown in figure \ref{statefig}.
+Using `0MC', '1MC', etc. as shorthand names for the number of metabolic
+comorbidities, we can define both current state and multi-state outcome
+variables. 
+Note one major difference between current state and outcome: 
+if a peice of a subject's time
+were divided into multiple sub-intervals, the time-dependent covariates
+repeat in each interval.  An endpoint, however, does not repeat.
+The 2mc state is not like a recurrent infection; the subject does
+not get new instances of it.
+
+<<mstate>>=
+data1$cstate <- with(data1, diab + htn + dyslip)  # td covariate
+
+# verify the e1, e2, e3 only happen once per person (we count on this)
+check <- with(data1, pmax(tapply(e1, id, sum), tapply(e2, id, sum),
+                          tapply(e3, id, sum)))
+if (any(check >1)) cat("Duplicates exist!\n")
+
+tcount <- with(data1, e1 + e2 + e3)
+temp2 <- with(data1, ifelse(death, 4, 
+              ifelse(tcount ==0, 0, cstate + tcount)))
+data1$mstate <- factor(temp2, 0:4, 
+         c("censored", "1mc", "2mc", "3mc", "death"))
+with(data1, table(cstate, mstate))
+@ 
+
+For any given row of data set \code{data1} a subject can begin
+that time period in any state except death,
+and end that time period either with ``no transtion at this time''
+= censored, or a transition to a higher state. 
+From the table above direct jumps of 2 or 3 comorbid states are
+uncommon, but they do occur when multiple new conditions are
+detected at a single visit.
+
+Reprise the values in table 4 of the paper.  These models were fit
+on age scale, assuming proportional hazards for the NAFLD effect.
+
+<<mfit1>>=
+nfit1 <- coxph(Surv(age1, age2, death) ~ strata(male) + 
+                   strata(cstate)/nafld,  data= data1)
+nfit2a <- coxph(Surv(age1, age2, mstate=="1mc") ~ strata(male) + nafld,
+               data=data1, subset= (cstate==0))
+nfit2b <- coxph(Surv(age1, age2, mstate=="2mc") ~ strata(male) + nafld,
+               data=data1, subset= (cstate<2))
+nfit2c <- coxph(Surv(age1, age2, mstate=="3mc") ~ strata(male) + nafld,
+               data=data1, subset= (cstate<3))
+@ 
+
+<<mfit1b, echo=FALSE>>= 
+table4 <- matrix(NA, 4, 5, dimnames= list(from=paste(0:3, "mc"),
+                                          to = c(paste(0:3, "mc"), "Death")))
+table4[, "Death"] <- coef(nfit1)
+table4[1,2] <- coef(nfit2a)
+table4[2,3] <- coef(nfit2b)
+table4[3,4] <- coef(nfit2c)
+print(round(exp(table4), 2), na.print="")
+@ 
+
+These very different. 
+
+\bibliography{refer}
+\bibliographystyle{plain}
+\end{document}
+
+  
+
+
+
+

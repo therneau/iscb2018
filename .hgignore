@@ -6,7 +6,12 @@
 .*\.out$
 .*\.pdf$
 .*\.log$
+.*\.bbl$
+.*\.blg$
+.*\.nav$
 .*\.R$
+.*\~$
+.*\.rda$
 test.Rnw
 proposal
 Index

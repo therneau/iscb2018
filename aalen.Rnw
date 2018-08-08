@@ -44,7 +44,6 @@ state4 <- function() {
 {\large Probability in State}
 \end{frame}
 
-\subsection{Transplant waiting list}
 \begin{frame}{Transplant outcome}
   The data set that first forced me to explore multi-state methods.
   \begin{itemize}
@@ -255,7 +254,6 @@ R-help (December 2009)
  \end{itemize}
 \end{frame}
 
-\subsection{Theory} 
 
 \begin{frame}{Math: the KM estimator}
 Let $t_1$, $t_2$, \ldots be the unique death times.
