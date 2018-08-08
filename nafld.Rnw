@@ -9,6 +9,7 @@ options(contrasts= c("contr.treatment", "contr.poly"),
         show.signif.starts = FALSE, continue=" ", width=60)
 par(mar=c(4.1, 4.1, 1.1, 1.1))
 load("nafld.rda")
+library(hexbin, quietly=TRUE)
 @ 
 
 \section{Multiple disease states}
@@ -94,7 +95,7 @@ arrows(c(5, 15, 21, 26, 31, 70), rep(c(1.4, .6), 3), c(5, 15, 21, 26, 31, 70),
 text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
      c("early", "within", "gap", "leading", "trailing", "late"))
 @ 
-\end{frame}
+0\end{frame}
 
 \begin{frame}[fragile]{R code}
 <<echo=TRUE, size='scriptsize'>>=
@@ -294,7 +295,7 @@ with(data1, table(mcount, mstate))
 matplot(20:100, survexp.mn[21:101, ,"2011"]*365000, type='l', lwd=2,
         col=2:1, log='y', xlab="Age", ylab= "Deaths/1000")
 @ 
-
+\end{frame}
 
 \begin{frame}[fragile]{Fits}
 <<mfit1, echo=TRUE, size="small">>=
@@ -479,7 +480,7 @@ round(t2, 1)
     \item Control subjects need to have full follow-up
       \begin{itemize}
         \item Duplicate the joint NAFLD/control subjects
-        \item \Sexpr{sum(nafld1$ntime > 0, na.rm=T)} out of \Sexpr(sum(nafld1$nafld)} cases
+        \item \Sexpr{sum(nafld1$ntime > 0, na.rm=T)} out of \Sexpr{sum(nafld1$nafld)} cases
         \item The NAFLD copy starts later 
         \item AJ estimate: copy 2 needs a new id
       \end{itemize}
@@ -526,7 +527,7 @@ i2 <- table(nafld1$nafld)
         \item Compute Aalen-Johansen estimates using these values.
         \item Alternate: use the \code{mstate} package
       \end{enumerate}
-    \item Better is method 1: time-fixed covaraite fit + static prediction
+    \item Better is method 1: time-fixed covariate fit + static prediction
       \begin{enumerate}
         \item Create the doubled data set (full follow-up for controls that
           become cases, as controls)
@@ -541,7 +542,13 @@ i2 <- table(nafld1$nafld)
           a time-weighted average.
         \item Use these to compute Aalen-Johansen values
       \end{enumerate}
+    \item variance - bootstrap
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+<<mfit4>>=
+# method 3.1
 
+@ 
+\end{frame}
