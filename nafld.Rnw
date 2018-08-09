@@ -529,9 +529,9 @@ i2 <- table(nafld1$nafld)
       \end{enumerate}
     \item Better is method 1: time-fixed covariate fit + static prediction
       \begin{enumerate}
-        \item Create the doubled data set (full follow-up for controls that
-          become cases, as controls)
-        \item Cox model fits for each transition, with robust variance
+        \item Only use the baseline nafld value, or create the doubled 
+          data set (full follow-up for controls that become cases)
+        \item Cox model fits for each transition, robust variance if doubled
         \item Hazard estimates and AJ computation as before
       \end{enumerate}
     \item Better is method 3.3: time-dependent fit + population curves
@@ -546,9 +546,28 @@ i2 <- table(nafld1$nafld)
   \end{itemize}
 \end{frame}
 
-\begin{frame}
-<<mfit4>>=
-# method 3.1
+\begin{frame}[fragile]
+<<mfit4, echo=TRUE>>=
+# method 1
+tdata <- data1
+tdata$nafld <- tdata$nafld[match(tdata$id, tdata$id)]  
+agfit1 <- survfit(Surv(age1, age2, endpoint) ~ male + nafld, tdata,
+                  id= id, istate= cstate, start.time=50)
+dim(agfit1)
+# plot(agfit1[1:2,-4], lty=1:2, col=rep(1:5, each=2))
+rtime <- summary(agfit1, rtime=100)$table[,3]
+rtime <- matrix(rtime, nrow(agfit1), ncol(agfit1))
+@ 
+\end{frame}
 
+\begin{frame}
+<<mfit4a>>=
+oldpar <- par(mar=c(5.1, 7.1, 1, 1))
+barplot(height= t(rtime[c(2,1,3,4), c(5,1,2,3)]), space=c(.1, .1, .3, .1),
+        names.arg=c("F NAFLD", "F Control", "M Control", 
+                    "M NAFLD"),
+        legend= TRUE, horiz=TRUE, las=1,
+        col= rainbow(5)[4:1], xlab="Years")
+par(oldpar)
 @ 
 \end{frame}
