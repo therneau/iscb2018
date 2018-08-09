@@ -417,6 +417,7 @@ Interestingly, the NAFLD effect for females is  close to constant on
 the $\sqrt{\mbox{rate}}$ scale.  (And what do we do with that fact?)
 
 \section{Multi-state analysis}
+\subsection{Data}
 \begin{figure}
 <<nfig1>>=
 states <- c("No comorbidity", "1 comorbidity", "2 comorbidities", 
@@ -441,10 +442,10 @@ Using `0MC', '1MC', etc. as shorthand names for the number of metabolic
 comorbidities, we can define both current state and multi-state outcome
 variables. 
 Note one major difference between current state and outcome: 
-if a peice of a subject's time
-were divided into multiple sub-intervals, the time-dependent covariates
+if a piece of a subject's time
+were divided into multiple sub-intervals, time-dependent covariates
 repeat in each interval.  An endpoint, however, does not repeat.
-The 2mc state is not like a recurrent infection; the subject does
+The 2mc endpoint is not like a recurrent infection; the subject does
 not get new instances of it.
 
 <<mstate>>=
@@ -458,9 +459,11 @@ if (any(check >1)) cat("Duplicates exist!\n")
 tcount <- with(data1, e1 + e2 + e3)
 temp2 <- with(data1, ifelse(death, 4, 
               ifelse(tcount ==0, 0, cstate + tcount)))
-data1$mstate <- factor(temp2, 0:4, 
+data1$endpoint <- factor(temp2, 0:4, 
          c("censored", "1mc", "2mc", "3mc", "death"))
-with(data1, table(cstate, mstate))
+data1$cstate <- factor(data1$cstate, 0:3,
+                c("0mc", "1mc", "2mc", "3mc"))       
+with(data1, table(cstate, endpoint))
 @ 
 
 For any given row of data set \code{data1} a subject can begin
@@ -471,23 +474,35 @@ From the table above direct jumps of 2 or 3 comorbid states are
 uncommon, but they do occur when multiple new conditions are
 detected at a single visit.
 
+\subsection{Estimated hazard rates}
 Reprise the values in table 4 of the paper.  These models were fit
 on age scale, assuming proportional hazards for the NAFLD effect.
-
+The small number of subjects who jump 2 states are considered under
+their current state, so \code{nfit2a} below is a model for the
+risk of progression to a more severe metabolic state given you are 
+currently in state 0mc. 
+This is essentially a fit under the constraint that the 0:1, 0:2, and 0:3
+hazards have a common coefficients. 
+Such a reduction is necessary for state pairs that have a small number of
+transitions,
+and is essentially equivalent to leaving selected interaction terms out of
+a model. 
 <<mfit1>>=
 nfit1 <- coxph(Surv(age1, age2, death) ~ strata(male) + 
                    strata(cstate)/nafld,  data= data1)
-nfit2a <- coxph(Surv(age1, age2, mstate=="1mc") ~ strata(male) + nafld,
-               data=data1, subset= (cstate==0))
-nfit2b <- coxph(Surv(age1, age2, mstate=="2mc") ~ strata(male) + nafld,
-               data=data1, subset= (cstate<2))
+nfit2a <- coxph(Surv(age1, age2, mstate %in% c("1mc", "2mc", "3mc")) ~ 
+                      strata(male) + nafld,
+               data=data1, subset= (cstate=="0mc"))
+nfit2b <- coxph(Surv(age1, age2, mstate %in% c("2mc", "3mc")) ~ 
+                    strata(male) + nafld,
+               data=data1, subset= (cstate== "1mc"))
 nfit2c <- coxph(Surv(age1, age2, mstate=="3mc") ~ strata(male) + nafld,
-               data=data1, subset= (cstate<3))
+               data=data1, subset= (cstate=="2mc"))
 @ 
 
 <<mfit1b, echo=FALSE>>= 
 table4 <- matrix(NA, 4, 5, dimnames= list(from=paste(0:3, "mc"),
-                                          to = c(paste(0:3, "mc"), "Death")))
+                to = c("0mc", "1-3mc", "2-3mc", "3mc", "Death")))
 table4[, "Death"] <- coef(nfit1)
 table4[1,2] <- coef(nfit2a)
 table4[2,3] <- coef(nfit2b)
@@ -495,7 +510,40 @@ table4[3,4] <- coef(nfit2c)
 print(round(exp(table4), 2), na.print="")
 @ 
 
-These very different. 
+The above table agrees closely the values found on figure 4 of the paper.
+Given that the effect of NAFLD on death was quite different for male and
+females, a more careful analysis will look at males and females 
+separately.
+
+\subsection{Time in state}
+The set of hazard rates is a useful summary of the model on a micro level,
+but does not give a firm feel for the overall effect of NAFLD on a subject.
+One way to look at this is with the $p(t)$ function, which gives the 
+probability of being in each state, for any given time.
+
+In this data set NAFLD is a time-dependent covariate.  Exactly how to compute
+predicted values when there is a time dependent covariate is a hard question
+and has bedeviled the statistical community for many years.  
+My own thinking divides the approach into three groups according to whether
+the original fit uses time dependent covariates or only baseline ones, and
+whether the prediction uses time dependent covariates or not.
+
+Add more discussion.
+
+We can look at 1 and 2 using non-parametric Aalen-Johansen estimates.
+For number 1, a control at entry remains a control from that time forward,
+ignoring any change to NAFLD status -- after all, the patient for whom you want
+a prediction may do the same.  NAFLD subjects at entry remain NAFLD subjects.
+<<ag1>>=
+tdata <- data1
+# make the nafld variable equal to its baseline value, for all observations
+tdata$nafld <- tdata$nafld[match(tdata$id, tdata$id)]  
+agfit1 <- survfit(Surv(age1, age2, endpoint) ~ male + nafld, tdata,
+                  id= id, istate= cstate)
+
+@  
+
+
 
 \bibliography{refer}
 \bibliographystyle{plain}
