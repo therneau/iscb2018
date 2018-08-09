@@ -72,8 +72,8 @@ ithick <- tapply(!is.na(mdata$thickness), mdata$ptnum, any)
     \item Imaged subset: \Sexpr{sum(itau | ithick | ipib)}
       \begin{itemize}
         \item Neurodegeneration: \Sexpr{sum(ithick)}
-        \item Neurodegeneration and amlyoid: \Sexpr{sum(ithick & ipib)}
-        \item Neurodegeneration, amloid, and tau: \Sexpr{sum(ipib & ithick & itau)}
+        \item Neurodegeneration and amyloid: \Sexpr{sum(ithick & ipib)}
+        \item Neurodegeneration, amyloid, and tau: \Sexpr{sum(ipib & ithick & itau)}
       \end{itemize}
   \end{itemize}
 \end{frame}
@@ -112,7 +112,7 @@ par(oldpar)
 
 \begin{frame}{States}
   \begin{itemize}
-    \item A0/A1: none/mild vs moderate/severe amlyoid burden
+    \item A0/A1: none/mild vs moderate/severe amyloid burden
     \item T0/T1: none/mild vs moderate/severe tau burden
     \item N0/N1/N2: increasing neurodegeneration
     \item 13 states (boxes)
@@ -215,7 +215,7 @@ abline(-15/12, 15/12, col=2, lwd=2)
         \item What is the pattern of rates?
           \begin{itemize}
             \item The T0$\rightarrow$T1 rate is higher in the presence of
-              A1, but not vice-versa.  (Amyloid deposits promote tau.)
+              A1, but not vice versa.  (Amyloid deposits promote tau.)
             \item A1/T1 promotes changes in N
           \end{itemize}
         \item The role of covariates.

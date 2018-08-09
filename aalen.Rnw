@@ -375,7 +375,7 @@ fit <- survfit(Surv(time, status) ~ group, data=mydata)
      \ldots
     \item For a 2 state alive-dead model, the IJ estimate = Greewood's estimate
        \begin{itemize}
-         \item emprically verified for a large number of data sets
+         \item empirically verified for a large number of data sets
 	 \item a proof is lacking
 	 \end{itemize}
     \end{itemize}
@@ -423,7 +423,7 @@ fit <- survfit(Surv(time, status) ~ group, data=mydata)
     \item CR: complete response = no overt evidence of malignancy
     \item BMT/SCT: bone marrow transplant or stem cell transplant = high
       intensity chemotherapy that will ablate the marrow and requires rescue
-      with hemotologic stem cells
+      with hematologic stem cells
     \item relapse: reappearance of disease after CR
 \end{itemize}
 \end{frame}
@@ -702,7 +702,7 @@ sfit4$transtions
         \begin{itemize}	 
           \item CR and transplant on the same day
 	  \item MGUS data: progression and death
-	  \item PAD data set: a joint left/right amuptation
+	  \item PAD data set: a joint left/right amputation
           \item R survival does not allow a zero length time interval
 	 \end{itemize}
 

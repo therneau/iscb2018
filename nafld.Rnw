@@ -19,13 +19,13 @@ library(hexbin, quietly=TRUE)
 
 \begin{frame}{NAFLD}
   \begin{itemize}
-    \item Allen et.al, Non-aloholic fatty liver disease incidence and
+    \item Allen, Non-alcoholic fatty liver disease incidence and
       impact on metabolic burden and death, a 20 year community study.
       Hepatology 2018, 67:1726--1736.
-    \item The prevalence of non-alcholic fatty liver disease (NASH) has
+    \item The prevalence of non-alcoholic fatty liver disease (NASH) has
       risen to 24\%.
     \item Most common cause of chronic liver disease.
-    \item Diagnosed with abdominal elastography.
+    \item Diagnosed with abdominal MRI.
     \item NASH = NAFLD + inflammation requires biopsy for diagnosis.
   \end{itemize}
 \end{frame}
@@ -63,15 +63,15 @@ statefig(cbind(4,1), cmat)
     \item \code{nafld2}: Variables of id, days, test, and value.  Contains
       selected tests and clinical observations.
     \item \code{nafld3}: Variables of id, days, and event type.  One observation
-      for each outcome: occurence of NASH, of hypertension, diabetes, etc.
-    \item To anonymize patients, all dates have been replaced with ``days
+      for each outcome: occurrence of NASH, of hypertension, diabetes, etc.
+    \item To anonomize patients, all dates have been replaced with ``days
       since first enrollment''.  
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Data}
   \begin{itemize}
-    \item Comorbidities are diabetes, hypertention, and dyslipiemia
+    \item Comorbidities are diabetes, hypertension, and dyslipidemia
     \item Focus on a model with 0, 1, 2, 3, of these + death
     \item The real work is in building and checking a data set,
       the fits will be easy.
@@ -231,7 +231,7 @@ subset(test, id==17)
 \begin{frame}
   \begin{quote}
     In any sufficiently large sample, any outrageous thing is likely to happen.
-    P. Diconis and Mosteller, Method of studying coincidences, JASA 1989.
+    P. Diaconis and Mosteller, Method of studying coincidences, JASA 1989.
   \end{quote}
   
   \begin{itemize}
@@ -364,7 +364,7 @@ print(round(exp(mtable), 1), na.print="")
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Primary biliary cirrohsis}
+\begin{frame}{Primary biliary cirrhosis}
   \begin{itemize}
     \item Progressive autoimmune disease
     \item Continual inflammation slowly creates scar tissue
@@ -372,7 +372,7 @@ print(round(exp(mtable), 1), na.print="")
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Primary biliary cirrohsis}
+\begin{frame}{Primary biliary cirrhosis}
 <<pbc>>=
 pfit <- survfit(Surv(time, status==2) ~ edema, pbc)
 plot(pfit, xscale=365.25, col=c(1,2,4), lwd=2,

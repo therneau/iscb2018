@@ -129,7 +129,7 @@ coxph(Surv(tstart, tstop, status) ~ treat + age +
     \item For many studies, the coefficient(s) from an AG model often have
       the same interpretation as an ordinary Cox model
     \item higher rate $\leftrightarrow$ shorter time to next event
-    \item Cumultive hazard = E(number of events so far)
+    \item Cumulative hazard = E(number of events so far)
     \item Survival curve = Pr(no events at all) is more complex, 
       but often not of interest
   \end{itemize}

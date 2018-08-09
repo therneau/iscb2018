@@ -99,7 +99,7 @@ $$
         \item the p-value is $<.01$!
         \item stop the presses! \pause
       \end{itemize}
-    \item The result is guarranteed -- why? \pause
+    \item The result is guaranteed -- why? \pause
     \item The original analysis of the Stanford study
     \item Rediscovered every 3--5 years
   \end{itemize}
@@ -140,13 +140,13 @@ The surprise is how \emph{big} the error can be.
 \end{itemize}
 \end{frame}   
 
-\begin{frame}{Cumultive dose received}
+\begin{frame}{Cumulative dose received}
 \begin{itemize}
   \item Does dose reduction harm patients?
   \item x= cumulative dose received  \pause
   \item x= fraction of expected  \pause
   \item x= fraction of expected, to date
-  \item Redmond et. al, Cancer Treatment Reports
+  \item Redmond, Cancer Treatment Reports
 \end{itemize}
 \end{frame}
 

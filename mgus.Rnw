@@ -88,7 +88,7 @@ par(oldpar)
 
 \begin{frame}
   \begin{itemize}
-    \item A given arrow only depends on the starting box and the transtions
+    \item A given arrow only depends on the starting box and the transitions
       \begin{itemize}
         \item At risk = in the starting box
         \item Event = transition of \emph{this} type, all others are treated
@@ -279,7 +279,7 @@ state3 <- function(what, horizontal=TRUE, ...) {
   \begin{itemize}
     \item 1384 subjects with monoclonal gammopathy of undetermined significance
       (MGUS)
-    \item R. Kyle et. al., New Engl J Med 346:564-569 (2002)
+    \item R. Kyle, New Engl J Med 346:564-569 (2002)
     \item Questions
       \begin{itemize}
 	\item Pattern of death and progression
@@ -297,7 +297,7 @@ mgus2[1:5,]
   \item Classic data set
     \begin{itemize}
       \item One row per subject
-      \item Separate colums for death and plasma cell malignancy
+      \item Separate columns for death and plasma cell malignancy
       \item Follow-up continues after PCM
     \end{itemize}
 \end{itemize}
@@ -380,7 +380,7 @@ plot(pfit2, col=rep(1:2, each=4), mark.time=FALSE,
 
 \begin{frame}{subsets}
   \begin{itemize}
-    \item For multi-state models arrangment, colors, and line types of the
+    \item For multi-state models arrangement, colors, and line types of the
       curves can be more time consuming than creating them
       \begin{itemize}
         \item Easy to plot a subset

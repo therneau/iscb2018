@@ -228,7 +228,7 @@ par(oldpar)
       \begin{itemize}
          \item Analysis of those who "comply with the treatment"
 	 \item People drop out because they are about to fail \\
-	     MDPIT trial (Oakes et al, JASA 1993; 88:44-49)
+	     MDPIT trial (Oakes, JASA 1993; 88:44-49)
 	 \item Only those who are sick respond to queries.
 	 \pause
 	 \item The fact that someone dropped out allows you to better guess

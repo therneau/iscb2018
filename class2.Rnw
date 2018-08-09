@@ -30,7 +30,7 @@ overlap <- with(nafld3, sum(event=="nafld" & days > 0)) #case and control
 \subsection{Background}
 The NAFLD data set present some interesting survival 
 analyses.  
-The primary reference for the study is Allen, et al \cite{Allen2018}.
+The primary reference for the study is Allen \cite{Allen2018}.
 The incidence of non-alcoholic fatty liver disease (NAFLD) has been rising
 rapidly in the last decade and it is now one of the main drivers of
 hepatology practice \cite{Tapper2018}.
@@ -42,22 +42,21 @@ Approximately 20-25\% of NAFLD patients will develop the inflammatory state
 of non-alcoholic steatohepatitis (NASH), leading to faster fibrosis 
 progression to end-stage disease.
 NAFLD can be accurately diagnosed by MRI proton density fat fraction,
-but NASH diagnosis currently requires a biospy.
+but NASH diagnosis currently requires a biopsy.
 
 \subsection{Data}
 Population-based epidemiological research can be
 conducted in Olmsted County, Minnesota, because
 medical care is effectively self-contained within the
 community and there are only a few providers. 
-All medical information from each of these pro-
-viders for each individual resident of Olmsted County
+All medical information from each of these providers for each 
+individual resident of Olmsted County
 is linked to a single identification number allowing
 linkage across health care systems. The diagnoses
 recorded in billing data from each institution are
-indexed so that all individuals with any specific diagno-
-sis can be identified across systems and the corre-
-sponding patient records can easily be retrieved from
-each site.
+indexed so that all individuals with any specific diagnosis
+can be identified across systems and the corresponding patient 
+records can easily be retrieved from each site.
 The system and infrastructure that collects, collates,
 and indexes the data is the Rochester Epidemiology Project REP
 \cite{Rocca2012, Sauver2012}, which has been
@@ -74,7 +73,7 @@ someone were diagnosed on 2001-06-20, the index date for confirmed NAFLD
 would be 2002-06-20, assuming that another liver diagnosis, death, or
 incomplete follow-up did not intervene.  Control subjects are matched on
 age and sex, and for each their follow-up also commences on the 
-``confirmed NALFD'' date.
+``confirmed NAFLD'' date.
 
 After the case-control set was assembled, we removed any subjects with less
 than 7 days of follow-up.  These subjects add little information, and it
@@ -113,7 +112,7 @@ We have eliminated timeline information before the index date,
 so each subject's first interval starts at or after 0.  
 
 \subsection{Cases and controls}
-A recurring and fundamental mistake in surival analysis is immortal time
+A recurring and fundamental mistake in survival analysis is immortal time
 bias, variations of which occur whenever either covariate values or
 patient selection at a particular time are allowed to ``peek into the
 future''.
@@ -148,7 +147,7 @@ digested them all.
 \subsection{Time dependent covariates and endpoints}
 
 For simplicity, our first analysis of the data will ignore the
-detailed timeline information, and treat each subject as if he/she
+detailed time line information, and treat each subject as if he/she
 were at risk from 0 to their last follow-up.
 The second half of the document re-runs things more properly; this
 makes a small amount of the code more complicated but has almost no
@@ -156,12 +155,12 @@ impact on the final results.
 
 Our primary data set will use NAFLD as a time-dependent covariate.
 The \code{tmerge} routine allows for easy creation of time dependent
-covariates and endponts.
-The routine's first three arguements are always two data sets and a
+covariates and endpoints.
+The routine's first three arguments are always two data sets and a
 subject identifier variable, then other arguments that perform actions.
 On the first call, \code{data1} contains one row per subject and any
 baseline variables which do not change over time, such as enrollment age or sex,
-and \code{data2} is used to set the initial timeline for the subject.
+and \code{data2} is used to set the initial time line for the subject.
 Subsequent calls build on this data set.
 The \code{tmerge} function automatically takes care of an important 
 distinction with tied times, namely that if subject Jones has a death on
@@ -195,24 +194,24 @@ The \code{tcount} attribute tells us a lot about the creation process.
 Each addition of a new endpoint or covariate to the data generates one 
 row in the table.  Column labels are explained by figure \ref{fig:timeline}.
 \begin{itemize}
-  \item There are \Sexpr{tc[1,7]} deaths, which by defnition fall at the
+  \item There are \Sexpr{tc[1,7]} deaths, which by definition fall at the
     trailing end of a subject's observation interval: they define the
     interval.
   \item There are \Sexpr{tc[2,2]} nafld calls that fall after the end
     of follow-up (`late').
     These are subjects whose first NAFLD fell within a year of the end of
-    their timeline, and the one year delay for ``confirmed'' pushed them
+    their time line, and the one year delay for ``confirmed'' pushed them
     over the end.  The time-dependent covariate \code{nafld} never turns
     from 0 to 1 for these subjects. 
     (These are all subjects who are also controls for someone else and 
     have $\ge 7$ days of followup for that reason.)
   \item \Sexpr{tc[3,1]} of the diabetes diagnoses are before entry, i.e., 
-    these are the prevalent cases.  One diagnosis occured on the day of
+    these are the prevalent cases.  One diagnosis occurred on the day of
     entry (``leading''), and will not be counted as a post-enrollment endpoint,
-    all the other fall somewhere beteen study entry and last follow-up.
+    all the other fall somewhere between study entry and last follow-up.
   \item Conversely, \Sexpr{tc[5,7]} subjects were diagnosed with hypertension
     at their final visit (``trailing'').  These will be counted as an
-    occurence of hypertension event (\code{e2}), but the time-dependent 
+    occurrence of hypertension event (\code{e2}), but the time-dependent 
     covariate \code{htn} will never become 1.  
 \end{itemize}
 
@@ -580,10 +579,10 @@ of male/female * NAFLD/Control time 5 states.
 Even a simpler plot that has only females and omits death, commented out in
 the above, is too much.  
 We instead summarize the data by the expected time in state, which is shown
-in the final table above and more succintly in figure \ref{fig:ag1b}.
+in the final table above and more succinctly in figure \ref{fig:ag1b}.
 Comparing the middle two bars in the figure women have a longer expected 
 lifetime than men (total sum of the bars) and spend somewhat fewer years
-of that lifetime in the 3 comorbitity state.
+of that lifetime in the 3 comorbidity state.
 Comparing control to NAFLD (top pair or bottom pair of bars), NAFLD subjects
 have a shorter expected lifetime, but the biggest effect is that far more of
 those remaining years are spent in the 2 or 3 comorbidity state.
@@ -594,7 +593,7 @@ Now repeat the entire process using the \emph{mstate} package.
 
 
 
-\section{Using the detailed timeline}
+\section{Using the detailed time line}
 
 \begin{figure}
 <<timeline, echo=FALSE>>=
@@ -606,14 +605,14 @@ arrows(c(5, 15, 21, 26, 31, 70), rep(c(1.4, .6), 3), c(5, 15, 21, 26, 31, 70),
 text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
      c("early", "within", "gap", "leading", "trailing", "late"))
 @ 
- \caption{Timeline for a hypthetical subject who moved to the region at
+ \caption{Time Line for a hypothetical subject who moved to the region at
 age 10, left for college at 18, returned at 26 for a residency, left again
 for further training at ages 31--32, returned at 33, and the retired to a
 warmer climate at age 70.}
 \label{fig:timeline}
 \end{figure}
 
-Let us repeat the exercise using the full REP timeline data.
+Let us repeat the exercise using the full REP time line data.
 Formally, this is the correct way to proceed since it accounts for the
 detail information about who is at risk.
 The tmerge calls are similar to the prior set.

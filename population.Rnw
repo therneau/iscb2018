@@ -9,7 +9,7 @@
    \item Natural summaries
     \begin{itemize}
       \item transition rate $\lambda_{jk}$ from state $j$ to state $k$
-      \item $p(t)$, the probablility-in-state vector
+      \item $p(t)$, the probability-in-state vector
       \item $E_j(t)$, expected amount of time in state $j$
       \item $v_j(t)$, expected number of visits to state $j$ (lifetime risk)
     \end{itemize}
@@ -52,7 +52,7 @@
   \begin{itemize}
     \item Terse summaries for our papers
     \item Too many projects on our plate
-    \item Thoughful simplicity: models which over-summarize are fit in order to 
+    \item Thoughtful simplicity: models which over-summarize are fit in order to 
       better understand the data, but with the larger context always in mind.
   \end{itemize}
   \pause
@@ -132,7 +132,7 @@
     \item $\hat y$ should be unbiased
       \begin{itemize}
         \item since many values will be averaged, 
-          bias is more worrysome than variance
+          bias is more worrisome than variance
         \item model will often be ``rich'' wrt $x_1$ shape and/or interactions
           with other variables
         \item similar to the thinking used in propensity scoring

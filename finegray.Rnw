@@ -541,7 +541,7 @@ legend(1, .2, c("F 60", "M 60", "F 80", "M 80"), lwd=2, lty=1, col=1:4, bty='n')
     \item The hazard for a heterogeneous collection of subjects is not the
       average of their hazards.  
       \end{enumerate}
-    \item Orinary modeling issues are more acute
+    \item Ordinary modeling issues are more acute
       \begin{enumerate}
         \item Proportional hazards rarely holds over long time periods
         \item Non-linearity and interactions will often be substantial
@@ -562,7 +562,7 @@ legend(1, .2, c("F 60", "M 60", "F 80", "M 80"), lwd=2, lty=1, col=1:4, bty='n')
         \item Particularly with long follow-up
       \end{itemize}
       
-    \item Wrong iterpretation
+    \item Wrong interpretation
       \begin{itemize}
         \item HR of .8 for sex; PCM is then interpreted as females have
           a higher rate, i.e., different biology.
