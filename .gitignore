@@ -1,0 +1,22 @@
+#Things created by latex as intermediates
+*.tex$
+*.snm$
+*.toc$
+*.vrb$
+*.aux$
+*.out$
+*.pdf$
+*.log$
+*.bbl$
+*.blg$
+*.nav$
+
+# The figures directory is filled by knitr
+figures
+
+# emacs editor backups
+.*\~$
+
+# TMT uses mercurial
+.hgignore
+.hg

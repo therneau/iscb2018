@@ -1,4 +1,21 @@
-Slides and other materials for a short course at the 2018 ISCB meetings in
-Melbourne.
+This is the file that was posted on the ISCB class site.
 
-Further materials at https://github.com/therneau/iscb2018
+
+ A course on "Multi-state survival models" for the 2018 ISCB meetings
+
+There is no material that you MUST download either before or during the course.
+
+In fact, as an instructor, I'd be delighted to have a room with no acces to email, twitter, newfeeds, etc. so as not to be in competition with a set of glowing screens.  However,
+
+1. The slide deck for the course is found here as a convenience to the users.  There may be last minute changes to a few slides, but nothing major.
+
+2. The focus of the course is on a set of extended examples to show the rationale and results of multi-state analyses.  There simply is not time for a detailed walk through of all the computer code to generate the analyses.  So that you can examine said code, and in order to do similar analyses yourself, all of the R code for all of the slides (and more) is found at 
+
+   https://github.com/therneau/iscb2018
+
+You will want to click the "clone or download" button.  If you are a git or github user you know what "clone" means, otherwise you will want to download.  The README.md file then contains more information.
+
+As of today (10 Aug) some of the material on the site is still being finalized, so you may want to check back more than once and check for updates.  (See the "last commit" message on the page.)
+
+3. To reiterate: you are welcome to grab this further material at any time, but you DO NOT NEED any of it for the lectures.
+
