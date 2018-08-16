@@ -20,6 +20,7 @@ par(mar=c(5.1,4.1, .2, .2))  # we will float figures, so no titles
 library(survival, quietly=TRUE)
 library(splines, quietly=TRUE)
 library(mstate,  quietly=TRUE)
+library(timereg, quietly=TRUE)
 options(show.signif.stars=FALSE)  # display statistical intelligence
 load('nafld.rda')
 table2 <- function(...) table(..., useNA="ifany")
@@ -153,7 +154,7 @@ then the time dependent covariate changes \emph{after} that event occurs.
 Short variable names like \code{diab} for diabetes were chosen
 below to help printouts fit the page width.
 
-<<data1>>=
+<<data1, cache=FALSE>>=
 data1 <- tmerge(nafld1[,1:8], nafld1, id=id, death = event(futime, status)) 
 data1 <- tmerge(data1, subset(nafld3, event=="nafld"), id, 
                 nafld= tdc(days))
@@ -244,8 +245,8 @@ age and sex distributions would match exactly.)
 
 \section{Time to death}
 \subsection{Overall survival}
-<<sfig1>>=
-nafld0 <- with(data1, nafld[match(id, id)])  # nafld status at entry
+<<sfig1, cache=FALSE>>=
+data1$nafld0 <- with(data1, nafld[match(id, id)])  # nafld status at entry
 sfit1 <- survfit(Surv(tstart, tstop, death) ~ male + nafld0, data1)
 sfit2 <- survfit(Surv(age1, age2, death) ~ male + nafld0, data1,
                  start.time=20)
@@ -323,7 +324,6 @@ insufficient.
 cfit1 <- coxph(Surv(tstart, tstop, death) ~ age + male + nafld, 
                data=data1)
 cfit1
-termplot(cfit1, term=1, se=TRUE)  # examine the shape for age
 
 zp1 <- cox.zph(cfit1, transform="identity")
 zp1
@@ -429,7 +429,7 @@ Interestingly, the NAFLD effect for females is  close to constant on
 the $\sqrt{\mbox{rate}}$ scale.  (And what do we do with that fact?)
 
 \subsection{Summarizing a non-proportional effect}
-The immediate follow-up question to a non-proprional effect is
+The immediate follow-up question to a non-proportional effect is
 ``how do I summarize it''?   
 There are multiple ways to proceed; a formal one is to use the
 \code{timereg} package, which implements the extended Cox model
@@ -442,7 +442,7 @@ where $\beta(t)$ are time-dependent coefficients.
 The \code{timecox} function currently does not handle the subset argument.
 It can also have issue if the risk sets get too small, so we truncate the
 estimation at age 95.  
-<<timereg, fig.caption='Cumulative regression coefficient for females and males'>>=
+<<timereg, fig.cap='Cumulative regression coefficient for females and males'>>=
 fdata <- subset(data1, male==0) 
 tcox1 <- timecox(Surv(age1, age2, death) ~ nafld, fdata,
                  max.time= 95, start.time= 30, id= fdata$id)
@@ -508,7 +508,7 @@ by looking at the \code{cox.zph} plot.
 As with a linear model that is chosen after looking at the scatterplot,
 any inference is suspect.  
 Many authors suggest using $\beta(t) = \log(t)$ based on the fact that
-covaratiate effect have often been observed to fade with time;
+covariate effect have often been observed to fade with time;
 however fitting an arbitrary fixed shape without even looking at the data
 is an even worse course.  
 We might conclude that nothing is going on simply because of a bad choice
@@ -522,7 +522,7 @@ anova(cfit2f, tfit3)
 
 tdata <- data.frame(age1=20:90, nafld=1)
 plot(20:90, predict(tfit3, tdata),  type='l',
-     xlab="Age", ylab="beta(t) for NAFLD")) 
+     xlab="Age", ylab="beta(t) for NAFLD") 
 @ 
 
 In summary, one can get a formal test from either the \code{timereg}
@@ -534,7 +534,6 @@ For the NAFLD effect in females the log(HR) is nearly linear
 over the range of 20--100 years.  
 
 \subsection{Other summaries}
-
 
 \section{Multi-state analysis}
 \subsection{Data}
@@ -590,7 +589,7 @@ with(data1, table(cstate, endpoint))
 
 For any given row of data set \code{data1} a subject can begin
 that time period in any state except death,
-and end that time period either with ``no transtion at this time''
+and end that time period either with ``no transition at this time''
 which is coded as censored, or end it with a transition to a higher state. 
 From the table above direct jumps of 2 or 3 comorbid states are
 uncommon, but they do occur when multiple new conditions are
@@ -673,13 +672,13 @@ in the survival package \cite{Therneau2016}.
      Fit the model using time dependent covariates, and do prediction
      for a subject using time dependent covariates.  This is the most
      elegant but can be very difficult.
-\end{enumerate}
+\end{description}
 
 To better understand the issue with method 2 look at a simpler data
 set and only the death endpoint.
 Primary biliary cirrhosis is a progressive auto-immune liver disease. 
-Chronic low level inflammation slowly but inexortably generate scar 
-tissue leading eventually to cirrhois and death.
+Chronic low level inflammation slowly but inexorably generate scar 
+tissue leading eventually to cirrhosis and death.
 The \code{pbcseq} data set in the \code{survival} library contains ongoing
 biochemical measurements for the subjects.
 Fit a simple time-dependent model using the 5 variable found in the
@@ -715,7 +714,7 @@ well; that is, of course, if such a patient were ever to exist.
 The problem with method 2 is that it is all too easy to create predicted
 curves for uninteresting, and in fact impossible, subjects.  
 
-<<pbc2, fig.caption='Overlaid curves for tertiles of baseline risk score along with the time=dependent prediction'>>=
+<<pbc2, fig.cap='Overlaid curves for tertiles of baseline risk score along with the time=dependent prediction'>>=
 tdata <- with(first, data.frame(age=median(age), bili=median(bili), edema=0,
                     protime= median(protime), albumin= median(albumin)))
 pfit1 <- survfit(Surv(futime, status==2) ~ 1, data=first)
@@ -748,7 +747,7 @@ a prediction may do the same.  NAFLD subjects at entry remain NAFLD subjects.
 An underlying idea here is the notion of a direct estimate.
 For some client sitting across the table from me, the oracle, I want to
 create a pair of curves comparing their future to that of some other
-group of comparitor subjects.
+group of comparator subjects.
 The direct method is to recruit two such cohorts and follow each forward 
 in time; done in some parallel universe where I can quickly complete that
 followup and then return to the present time to inform my client.
@@ -756,7 +755,6 @@ In this thought experiment no subjects in either group are dropped, even
 though they might gain or lose disease markers in the future.
 
 <<ag1>>=
-data1$nafld0 <- with(data1, nafld[match(id, id)])
 agfit1 <- survfit(Surv(age1, age2, endpoint) ~ male + nafld0, data1,
                   id= id, istate= cstate, start.time=40)
 dim(agfit1)
@@ -769,11 +767,11 @@ round(rtime[c(2,1,3,4),c(5,1,2,3,4)], 1)
 @  
 
 <<ag1b, echo=FALSE, fig.cap="Expected time in state for each group">>=
-if (FALSE) {
+if (TRUE) {
 barplot(height= t(rtime[c(2,1,3,4), c(5,1,2,3,4)]), space=c(.05, .5),
         names.arg=c("F NAFLD", "F Control", "M Control", 
                     "M NAFLD"),
-        legend= TRUE, args.legend=list(x=10, y=26),
+        legend= TRUE, args.legend=list(x=11, y=24),
         horiz=FALSE, las=1, beside=TRUE,
         col= c(rainbow(5)[4:1], 'black'), ylab="Expected years in state")
 } else {
@@ -793,20 +791,18 @@ Even a simpler plot that has only females and omits death, commented out in
 the above code, is too much.  
 We instead summarize the data by the expected time in state, which is shown
 in the final table above and more succinctly in figure \ref{fig:ag1b}.
-Comparing the middle two bars in the figure women have a longer expected 
-lifetime than men (total sum of the bars) and spend somewhat fewer years
-of that lifetime in the 3 comorbidity state.
-Comparing control to NAFLD (top pair or bottom pair of bars), NAFLD subjects
+Comparing the middle two groups in the figure women have a longer expected 
+lifetime than men (less time in the death state) and spend somewhat fewer years
+of that longer lifetime in the 3 comorbidity state.
+Comparing control to NAFLD (left or right pair pair), NAFLD subjects
 have a shorter expected lifetime, but the biggest effect is that far more of
 those remaining years are spent in the 2 or 3 comorbidity state.
 Recognize that a significant portion of this difference is due to the
 fact that a 40 year old NAFLD subject is more likely than their matched
 control to already be in the 2MC or 3MC state. 
-An issue with the stacked bar chart is that many will assume that every
-subject spends ``after age 40'' time in every state.
 
 Now repeat the curves using fitted Cox models. 
-I will first do this ``by hand'' because it is illustritive. 
+I will first do this ``by hand'' because it is illustrative. 
 (Later is will be demonstrated using the mstate package.)
 The key idea is that we want to replicate the underlying steps in
 the Aalen-Johansen estimate, which builds off of a nstate by nstate
@@ -817,11 +813,21 @@ Each of these transitions will come from a separate Cox model.
 In those prior fits we fit all the death transitions at once using
 a strata by covariate interaction; the survival curve portion of the
 package isn't quite smart enough to deal with that so we redo them
-as separate fits (yeilding the same coefficients).
+as separate fits (yielding the same coefficients).
 The result is given numerically below and in figure \ref{fig:mstack2}.
 Since it used a time dependent covariate in the model, but predicts
 for a subject who is always NAFLD or non-NAFLD, this corresponds
 to method 2 given earlier.
+
+Figures \ref{fig:ag1b} and \ref{fig:mstack2} differ in another important way,
+chosen to illustrate the difference.  
+The former tries to address the question the future of an ``average'' NAFLD
+subject who is 40 years old.  Many of these will already have comorbidities,
+and at a higher rate than a matched reference subject without NAFLD.
+The second figure asks the question for a given pair of subjects, both with
+0 comorbidities; it is also based on the fitted model.  
+The two computations answer different questions.
+
 
 <<coxcurve1>>=
 sname <- c("0mc", "1mc", "2mc", "3mc", "death")
@@ -858,15 +864,14 @@ round(rtime2[c(2,1,3,4),],1)
 
 \begin{figure}
 <<mstack2>>=
-if (TRUE) {
+if (FALSE) {  # individual bars
     barplot(height= t(rtime2[c(2,1,3,4),]), space=c(.05, .5),
         names.arg=c("F NAFLD", "F Control", "M Control", 
                     "M NAFLD"),
         legend= TRUE, args.legend=list(x=11, y=28),
         horiz=FALSE, las=1, beside=TRUE,
         col= c(rainbow(5)[4:1], 'black'), ylab="Expected years in state")
-}
-else {
+} else { #stacked bars
     oldpar <- par(mar=c(5.1, 7.1, 2, 2))
     barplot(height= t(rtime2[c(2,1,3,4), 1:4]), space=c(.1),
         names.arg=c("F NAFLD", "F Control", "M Control", 
@@ -882,7 +887,7 @@ else {
 \label{fig:mstack2}
 \end{figure}
 
-We will do this
+Now repeat the modeling
 using the \code{mstate} package.
 The first step is to create a transition matrix, which guides all of
 the further routines.
@@ -902,14 +907,14 @@ Transitions marked as NA are impossible.
 The second step is to create a special data set.  
 The mstate package fits all of the models at once, unlike our code
 further above which fit separate models \code{nfit1}, \code{nfit2a}, etc.
-for the different transtions. 
+for the different transitions. 
 To do this it requires a ``stacked'' data set:
 the first set of rows are the ones that would be used for a Cox model
-of 0mc:1mc transtions, then the data needed for 1mc:2mc transitions, etc.
+of 0mc:1mc transitions, then the data needed for 1mc:2mc transitions, etc.
 for all of the 10 possible given in our transitions matrix.
 Each of the individual subsets is marked with a (from, to, transition) triplet
 and contains variables (Tstart, Tstop, status) where status is 1 if the
-transition in question occured. 
+transition in question occurred. 
 A special function \code{msprep} can create such a data set from a particular
 kind of input data set, but that approach does not allow for 
 time-dependent covariates.
@@ -996,7 +1001,7 @@ since birth, or even for disjoint intervals;
 figure \ref{fig:timeline} gives an example. Hence the definition of
 the at risk period is a bit more complicated than a single follow-up time.
 This data set contains begin/end intervals for each subject.  
-We have eliminated timeline information before the index date, 
+We have eliminated time line information before the index date, 
 so each subject's first interval starts at or after 0.  
 
 Let us repeat the exercise using the full REP time line data.
@@ -1035,7 +1040,7 @@ The tcount matrix has a few new features: (discussion).
 
 
 After adding in the state variables in the same way as before, the 
-estimated state transtion effects end up as below.
+estimated state transition effects end up as below.
 <<state2>>=
 data2$cstate <- with(data2, diab + htn + dyslip)  # td covariate
 
@@ -1052,27 +1057,29 @@ data2$endpoint <- factor(temp2, 0:4,
 data2$cstate <- factor(data2$cstate, 0:3,
                 c("0mc", "1mc", "2mc", "3mc"))       
 
-nfit3 <- coxph(Surv(age1, age2, death) ~ strata(male) + 
+nfit3 <- coxph(Surv(age1, age2, death) ~ male + 
                    strata(cstate)/nafld,  data= data2)
 nfit4a <- coxph(Surv(age1, age2, endpoint %in% c("1mc", "2mc", "3mc")) ~ 
-                      strata(male) + nafld,
+                      male + nafld,
                data=data2, subset= (cstate=="0mc"))
 nfit4b <- coxph(Surv(age1, age2, endpoint %in% c("2mc", "3mc")) ~ 
-                    strata(male) + nafld,
+                    male  + nafld,
                data=data2, subset= (cstate== "1mc"))
-nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ strata(male) + nafld,
+nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ male + nafld,
                data=data2, subset= (cstate=="2mc"))
 
 temp <- cbind(c(coef(nfit1), coef(nfit2a), coef(nfit2b), coef(nfit2c)),
               c(coef(nfit3), coef(nfit4a), coef(nfit4b), coef(nfit4c)))
+temp <- temp[c(2:5, 7,9,11), ]  #only the death coefs
 dimnames(temp) <- list(c("0mc:death", "1mc:death", "2mc:death", "3mc:death",
                          "0mc:1mc", "1mc:2mc", "2mc:3mc"),
                        c("Simple", "Timeline"))
 round(exp(temp), 2)
 @ 
 
-We see that adding in the careful timeline data makes almost no change, at least
-for this data set.  We will not persue this further.
+We see that adding in the careful time line data makes almost no change in
+the Cox model fits, at least
+for this data set.  We will not pursue the timeline data further.
 
 \bibliography{refer}
 \bibliographystyle{plain}
