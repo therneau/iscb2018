@@ -652,20 +652,25 @@ predicted curves when there is a time dependent covariate is a hard question
 and has bedeviled the statistical community for many years.  
 My own thinking divides the approach into three groups according to whether
 the original fit uses time dependent covariates or only baseline ones, and
-whether the prediction uses time dependent covariates or not.
+whether the prediction uses time dependent covariates or not.  Some further
+thoughts can be found in the ``Adjusted survival curves'' vignette 
+in the survival package \cite{Therneau2016}.
 
-\begin{enumerate}
-  \item Fit the model using baseline covariates as predictors, predict for
+\begin{description}
+  \item [baseline] 
+    Fit the model using baseline covariates as predictors and predict for
     a given subject using that subject's baseline.  This is the classic
     method and also the simplest to grasp.  A sub-category of the approach
     is the landmark method: which is to apply this approach at some fixed
     future time point, using the baseline covariates that will apply at that
     instant.
-  \item Fit the model using time dependent covariates, and then do prediction
-     for a given subject using only their baseline.  This is essentially
+  \item [partial time dependent] Fit the model using 
+    time dependent covariates, and then do prediction
+     for a given subject using only their baseline values.  This is essentially
      the approach of Simon and Makuch \cite{Simon84}.  The approach is
      commonly used but below I discuss some problems.
-   \item Fit the model using time dependent covariates, and do prediction
+   \item [time dependent]
+     Fit the model using time dependent covariates, and do prediction
      for a subject using time dependent covariates.  This is the most
      elegant but can be very difficult.
 \end{enumerate}
@@ -813,6 +818,10 @@ In those prior fits we fit all the death transitions at once using
 a strata by covariate interaction; the survival curve portion of the
 package isn't quite smart enough to deal with that so we redo them
 as separate fits (yeilding the same coefficients).
+The result is given numerically below and in figure \ref{fig:mstack2}.
+Since it used a time dependent covariate in the model, but predicts
+for a subject who is always NAFLD or non-NAFLD, this corresponds
+to method 2 given earlier.
 
 <<coxcurve1>>=
 sname <- c("0mc", "1mc", "2mc", "3mc", "death")
@@ -849,15 +858,29 @@ round(rtime2[c(2,1,3,4),],1)
 
 \begin{figure}
 <<mstack2>>=
-oldpar <- par(mar=c(5.1, 7.1, 2, 2))
-barplot(height= t(rtime2[c(2,1,3,4), 1:4]), space=c(.1),
+if (TRUE) {
+    barplot(height= t(rtime2[c(2,1,3,4),]), space=c(.05, .5),
+        names.arg=c("F NAFLD", "F Control", "M Control", 
+                    "M NAFLD"),
+        legend= TRUE, args.legend=list(x=11, y=28),
+        horiz=FALSE, las=1, beside=TRUE,
+        col= c(rainbow(5)[4:1], 'black'), ylab="Expected years in state")
+}
+else {
+    oldpar <- par(mar=c(5.1, 7.1, 2, 2))
+    barplot(height= t(rtime2[c(2,1,3,4), 1:4]), space=c(.1),
         names.arg=c("F NAFLD", "F Control", "M Control", 
                     "M NAFLD"),
         legend= TRUE, horiz=TRUE, las=1, xlim=c(0,60),
         col= rainbow(5)[4:1], 
         xlab="Expected years in state, starting in 0mc at age 40")
-par(oldpar)
+    par(oldpar)
+}
 @
+\caption{Predicted average number of years in each state, for a hypothetical
+  subject starting with 0 metabolic comorbidities at age 40.}
+\label{fig:mstack2}
+\end{figure}
 
 We will do this
 using the \code{mstate} package.
@@ -944,19 +967,9 @@ pdata <- expand.grid(nafld=0:1, male=0:1, trans2=c(1,1,1,2,2,6:10),
 attr(pdata, "trans") <- transitions
 class(pdata) <- c("msdata", "data.frame")
 
-mhaz <- msfit(mcox, newdata=pdata, trans=transitions)
+# there is a problem with mhaz, the next line fails
+#mhaz <- msfit(mcox, newdata=pdata, trans=transitions)
 @ 
-
-
-
-tdata <- expand.grid(nafld=0:1, male=0:1, cstate= levels(data1$cstate))
-pfit1 <- survfit(nfit1, newdata=tdata)
-@ 
-
-
-
-
-
 
 \section{Using a detailed time line}
 
