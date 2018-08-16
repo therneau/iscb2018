@@ -19,6 +19,7 @@ opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
 par(mar=c(5.1,4.1, .2, .2))  # we will float figures, so no titles
 library(survival, quietly=TRUE)
 library(splines, quietly=TRUE)
+library(mstate,  quietly=TRUE)
 options(show.signif.stars=FALSE)  # display statistical intelligence
 load('nafld.rda')
 table2 <- function(...) table(..., useNA="ifany")
@@ -755,7 +756,7 @@ agfit1 <- survfit(Surv(age1, age2, endpoint) ~ male + nafld0, data1,
                   id= id, istate= cstate, start.time=40)
 dim(agfit1)
 # plot(agfit1[1:2,-4], lty=1:2, col=rep(1:5, each=2))
-rtime <- summary(agfit1, rtime=100)$table[,3]
+rtime <- summary(agfit1, rmean=100)$table[,3]
 rtime <- matrix(rtime, nrow(agfit1), ncol(agfit1))
 dimnames(rtime) <- list(c("female, control", "female, NAFLD", "male, control",
                           "male, nafld"), agfit1$states)
@@ -763,7 +764,6 @@ round(rtime[c(2,1,3,4),c(5,1,2,3,4)], 1)
 @  
 
 <<ag1b, echo=FALSE, fig.cap="Expected time in state for each group">>=
-oldpar <- par(mar=c(5.1, 7.1, 1, 1))
 if (FALSE) {
 barplot(height= t(rtime[c(2,1,3,4), c(5,1,2,3,4)]), space=c(.05, .5),
         names.arg=c("F NAFLD", "F Control", "M Control", 
@@ -796,14 +796,161 @@ have a shorter expected lifetime, but the biggest effect is that far more of
 those remaining years are spent in the 2 or 3 comorbidity state.
 Recognize that a significant portion of this difference is due to the
 fact that a 40 year old NAFLD subject is more likely than their matched
-control to already be in the 2MC or 3MC state.  
+control to already be in the 2MC or 3MC state. 
 An issue with the stacked bar chart is that many will assume that every
 subject spends ``after age 40'' time in every state.
 
-<<p1>>=
+Now repeat the curves using fitted Cox models. 
+I will first do this ``by hand'' because it is illustritive. 
+(Later is will be demonstrated using the mstate package.)
+The key idea is that we want to replicate the underlying steps in
+the Aalen-Johansen estimate, which builds off of a nstate by nstate
+matrix at each event time whose $jk$ element are $\lambda_{jk}(t)$,
+the hazard at that time.  Transitions that cannot occur do not need to
+be filled in, nor does the diagonal of the matrix.
+Each of these transitions will come from a separate Cox model.
+In those prior fits we fit all the death transitions at once using
+a strata by covariate interaction; the survival curve portion of the
+package isn't quite smart enough to deal with that so we redo them
+as separate fits (yeilding the same coefficients).
+
+<<coxcurve1>>=
+sname <- c("0mc", "1mc", "2mc", "3mc", "death")
+lambda <- matrix(vector("list", 25), 5,5,
+                 dimnames = list(from=sname, to=sname))
+tdata <- expand.grid(nafld=0:1, male=0:1)
+
+# survival curves
+for (i in 1:4) {
+    tfit <- coxph(Surv(age1, age2, death) ~ nafld + male, data1,
+                  subset=(cstate==sname[i]))
+    lambda[i,5] <- list(survfit(tfit, newdata=tdata, start.time=40))
+}
+
+# state transitions
+lambda[1, 2:4] <- list(survfit(nfit2a, newdata=tdata, start.time=40))
+lambda[2, 3:4] <- list(survfit(nfit2b, newdata=tdata, start.time=40))
+lambda[3, 4]   <- list(survfit(nfit2c, newdata=tdata, start.time=40))
+
+# fix a zero divide bug, found when working up this example, which
+#  occurs at age 102 (beyond the range I care about)
+temp <- lambda[4,5][[1]]
+temp$cumhaz <- ifelse(is.finite(temp$cumhaz), temp$cumhaz, 0)
+lambda[4,5] <- list(temp)
+
+# Now proceed  (this next line isn't fast)
+agfit2 <- survfit(lambda, start.time=40, p0=c(1,0,0,0,0))
+rtime2 <- summary(agfit2, rmean=100)$table[,3]
+rtime2 <- matrix(rtime2, nrow(agfit2), ncol(agfit2))
+dimnames(rtime2) <- list(c("female, control", "female, NAFLD", "male, control",
+                          "male, nafld"), agfit2$states)
+round(rtime2[c(2,1,3,4),],1)
+@ 
+
+\begin{figure}
+<<mstack2>>=
+oldpar <- par(mar=c(5.1, 7.1, 2, 2))
+barplot(height= t(rtime2[c(2,1,3,4), 1:4]), space=c(.1),
+        names.arg=c("F NAFLD", "F Control", "M Control", 
+                    "M NAFLD"),
+        legend= TRUE, horiz=TRUE, las=1, xlim=c(0,60),
+        col= rainbow(5)[4:1], 
+        xlab="Expected years in state, starting in 0mc at age 40")
+par(oldpar)
+@
+
+We will do this
+using the \code{mstate} package.
+The first step is to create a transition matrix, which guides all of
+the further routines.
+<<mstate1>>=
+sname <- c("0mc", "1mc", "2mc", "3mc", "death")
+transitions <- matrix(NA, 5, 5, dimnames= list(from=sname, to=sname))
+transitions[1,2:4] <- 1:3
+transitions[2,3:4] <- 4:5
+transitions[3,4] <- 6
+transitions[1:4, 5] <- 7:10
+transitions
+@ 
+
+From this point forward all of the transitions are referred to by the
+numeric value found in this matrix. 
+Transitions marked as NA are impossible.
+The second step is to create a special data set.  
+The mstate package fits all of the models at once, unlike our code
+further above which fit separate models \code{nfit1}, \code{nfit2a}, etc.
+for the different transtions. 
+To do this it requires a ``stacked'' data set:
+the first set of rows are the ones that would be used for a Cox model
+of 0mc:1mc transtions, then the data needed for 1mc:2mc transitions, etc.
+for all of the 10 possible given in our transitions matrix.
+Each of the individual subsets is marked with a (from, to, transition) triplet
+and contains variables (Tstart, Tstop, status) where status is 1 if the
+transition in question occured. 
+A special function \code{msprep} can create such a data set from a particular
+kind of input data set, but that approach does not allow for 
+time-dependent covariates.
+
+<<mstate2>>=
+stacker <- function(s1, s2, trans) {
+    temp <- subset(data1, as.numeric(cstate) == s1)
+    data.frame(from=s1, to=s2, trans=trans, 
+               Tstart= temp$age1,
+               Tstop = temp$age2,
+               status = 1*(as.numeric(temp$endpoint) == s2),
+               temp)
+}
+ntrans <- sum(!is.na(transitions))
+temp <- vector("list", ntrans)
+k <- 0
+for (i in 1:5) {
+    for (j in 1:5) {
+        number <- transitions[i,j]
+        if (!is.na(number)) {
+            k <- k +1
+            temp[[k]] <- stacker(i,j, number)
+        }
+    }
+}
+msdata <- do.call(rbind, temp)
+attr(msdata, "trans") <- transitions
+class(msdata) <- c("msdata", "data.frame")
+events(msdata)$Frequencies
+@ 
+
+The result of the \code{events} function can be used as a check for
+a proper data set creation.
+It is also a good idea to select 2 or 3 subjects and print out their data.
+We can now fit the models for all of the transitions.
+Because we decided to lump transitions from 0MC to 1, 2, or 3MC together as
+a single rate, we need to create a variable that lumps them.
+
+<<mstate3>>=
+msdata$trans2 <- c(1,1,1,2,2,6:10)[msdata$trans]
+mcox <- coxph(Surv(age1, age2, status) ~ strata(trans2) * (male + nafld), 
+              msdata)
+mcox
+@ 
+
+The coefficients of this model are the same as individual fits.  The
+advantage is that we can get all of the predictions at once, using
+a data frame that has all of the states.  This prediction matrix needs
+a set of rows for each of the transitions, and also needs to
+have the transition matrix spliced on.
+
+<<mstate4>>=
+pdata <- expand.grid(nafld=0:1, male=0:1, trans2=c(1,1,1,2,2,6:10),
+                     trans= c(1,1,1,2,2,6:10))
+attr(pdata, "trans") <- transitions
+class(pdata) <- c("msdata", "data.frame")
+
+mhaz <- msfit(mcox, newdata=pdata, trans=transitions)
+@ 
+
+
+
 tdata <- expand.grid(nafld=0:1, male=0:1, cstate= levels(data1$cstate))
 pfit1 <- survfit(nfit1, newdata=tdata)
-
 @ 
 
 
@@ -811,7 +958,7 @@ pfit1 <- survfit(nfit1, newdata=tdata)
 
 
 
-\section{Using the detailed time line}
+\section{Using a detailed time line}
 
 \begin{figure}
 <<timeline, echo=FALSE>>=
@@ -829,7 +976,8 @@ for further training at ages 31--32, returned at 33, and the retired to a
 warmer climate at age 70.}
 \label{fig:timeline}
 \end{figure}
-The last data set \code{nafld0} is special to the REP.  A given
+
+A fourth data set \code{nafld0} is special to the REP.  A given
 subject may be in the Olmsted County population for only a short period,
 since birth, or even for disjoint intervals;
 figure \ref{fig:timeline} gives an example. Hence the definition of
@@ -910,6 +1058,8 @@ dimnames(temp) <- list(c("0mc:death", "1mc:death", "2mc:death", "3mc:death",
 round(exp(temp), 2)
 @ 
 
+We see that adding in the careful timeline data makes almost no change, at least
+for this data set.  We will not persue this further.
 
 \bibliography{refer}
 \bibliographystyle{plain}
