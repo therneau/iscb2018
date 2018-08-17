@@ -429,6 +429,87 @@ Interestingly, the NAFLD effect for females is  close to constant on
 the $\sqrt{\mbox{rate}}$ scale.  (And what do we do with that fact?)
 
 \subsection{Summarizing a non-proportional effect}
+A formal way to understand non-proportionality is to fit an extended
+Cox model that has a time-dependent coefficient, e.g.,
+$$
+\lambda(t) = \lambda_0(t) \exp(\beta_1(t)x_1 + \beta_2 x_2 + \ldots)
+$$
+A first order approximation to this is plotted as part of the 
+\code{cox.zph} function. 
+
+\subsubsection{Using survSplit}
+A more refined version can be based on a simple slight of hand.
+Assume for instance that $\beta(t) = a + bt$ for some covariate.
+Then $\beta(t)x = ax  + b(tx)$, and we can fit this with an ordinary Cox
+model along with a modified data set containing the variables $x$ and
+$tx$. 
+Because the underlying code of a Cox model only evaluates its arguments
+at the event times, the modified data would have one row per subject/time
+combination, i.e., if subject Smith was at risk for 8 of the events then
+he/she would have 8 rows in the data set.
+Normally such a fine division of time is not necessary. 
+Below, the survSplit routine is used to expand the original data set into 1 year
+intervals of age, which is not continuous time but close enough to 
+continuous over our 60 year scale. 
+The code below shows an unimportant time effect for males but an
+substantial drop off for females.  
+Time dependent covariates should always depend on the \emph{past}, so our
+constructed variable below uses \code{age1}, the age at the start of each
+interval.
+
+<<slight>>=
+timedata <- survSplit(Surv(age1, age2, death) ~ ., data1, cut=20:99)
+timedata$nafld2 <- with(timedata, nafld *age1)  # the dummy variable
+tfit1 <- coxph(Surv(age1, age2, death) ~ nafld + nafld2, 
+                  timedata, subset= (male==0))
+tfit2 <- coxph(Surv(age1, age2, death) ~ nafld + nafld2,
+                  timedata, subset= (male==1))
+round(summary(tfit1)$coef,4)
+round(summary(tfit2)$coef,4)
+
+# plot, not shown
+if (FALSE) {
+    ages <- seq(20, 100, 5)
+    tdata <- data.frame(nafld=1, nafld2 = ages)
+    matplot(ages, exp(cbind(predict(tfit1, tdata), predict(tfit2, tdata))),
+            col=2:1, pch='fm',  log='y', xlab="Age", ylab="Hazard ratio")
+    abline(0,0, lty=2)
+}
+@ 
+
+The time dependent trick gives a simple and interpretable picture of
+$\beta(t)$, but with a major problem: we picked the form for $\beta(t)$
+by looking at the \code{cox.zph} plot. 
+As with a linear model that is chosen after looking at the scatterplot,
+any inference from such a fit is suspect.  
+Many authors suggest using $\beta(t) = \log(t)$ based on the fact that
+covaratiate effects have often been observed to fade with time;
+however fitting an arbitrary fixed shape without even looking at the data
+is an even worse course choosing a fit based on looking:  
+we might conclude that nothing is going on simply because of a bad choice
+for $\beta(t)$.
+A more sophisticated approach is to fit a spline function.
+
+<<slight2>>=
+xxx
+tfit3 <- coxph(Surv(age1, age2, death) ~ nafld + nafld:ns(age1,3), timedata,
+               subset= (male==0))
+anova(cfit2f, tfit3)
+
+tdata <- data.frame(age1=20:90, nafld=1)
+plot(20:90, predict(tfit3, tdata),  type='l',
+     xlab="Age", ylab="beta(t) for NAFLD, females")) 
+@ 
+
+In summary, one can get a formal test from either the \code{timereg}
+function or by anova approach above.  
+To describe the shape of the effect requires a plot, or after looking
+at the plot one can choose to describe the hazard ratio 
+using a simple approximation.
+For the NAFLD effect in females the log(HR) is nearly linear 
+over the range of 20--100 years.  
+
+\subsubsection{Timreg package}
 The immediate follow-up question to a non-proprional effect is
 ``how do I summarize it''?   
 There are multiple ways to proceed; a formal one is to use the
@@ -465,74 +546,6 @@ females it is strongly non-proportional.
 Figure \ref{fig:timereg} shows the resulting cumulative regression
 plots for males and females, the female one deviates strongly from
 linear.
-
-The \code{timecox} function is based on cumulative hazard and cumulative
-coefficients; that is the scale on which formal testing can most easily
-be done.  For understanding an effect, however, it simpler to work with
-the coefficient function itself $\beta(t)$.
-A first order approximation to this is plotted as part of the 
-\code{cox.zph} function.  
-A more refined version can be based on a simple slight of hand.
-Assume for instance that $\beta(t) = a + bt$ for some covariate.
-Then $\beta(t)x = ax  + b(tx)$, and we can fit this with an ordinary Cox
-model along with a modified data set containing the variables $x$ and
-$tx$. The survSplit routine expands the original data set into 1 year
-intervals of age, which is not continuous time but close enough to 
-continuous over our 60 year scale. 
-The code below shows an unimportant time effect for males but an
-substantial drop off for females.  
-
-<<slight>>=
-timedata <- survSplit(Surv(age1, age2, death) ~ ., data1, cut=20:99)
-timedata$nafld2 <- with(timedata, nafld *age1)
-tfit1 <- coxph(Surv(age1, age2, death) ~ nafld + nafld2, 
-                  timedata, subset= (male==0))
-tfit2 <- coxph(Surv(age1, age2, death) ~ nafld + nafld2,
-                  timedata, subset= (male==1))
-round(summary(tfit1)$coef,4)
-round(summary(tfit2)$coef,4)
-
-# plot, not shown
-if (FALSE) {
-    ages <- seq(20, 100, 5)
-    tdata <- data.frame(nafld=1, nafld2 = ages)
-    matplot(ages, exp(cbind(predict(tfit1, tdata), predict(tfit2, tdata))),
-            col=2:1, pch='fm',  log='y', xlab="Age", ylab="Hazard ratio")
-    abline(0,0, lty=2)
-}
-@ 
-
-The time dependent trick gives a simple and interpretable picture of
-$\beta(t)$, but with a major problem: we picked the form for $\beta(t)$
-by looking at the \code{cox.zph} plot. 
-As with a linear model that is chosen after looking at the scatterplot,
-any inference is suspect.  
-Many authors suggest using $\beta(t) = \log(t)$ based on the fact that
-covaratiate effect have often been observed to fade with time;
-however fitting an arbitrary fixed shape without even looking at the data
-is an even worse course.  
-We might conclude that nothing is going on simply because of a bad choice
-for $\beta(t)$, and learn little about the true shape.
-A more sophisticated approach is to fit a spline function.
-
-<<slight2>>=
-tfit3 <- coxph(Surv(age1, age2, death) ~ nafld + nafld:ns(age1,3), data1,
-               subset= (male==0))
-anova(cfit2f, tfit3)
-
-tdata <- data.frame(age1=20:90, nafld=1)
-plot(20:90, predict(tfit3, tdata),  type='l',
-     xlab="Age", ylab="beta(t) for NAFLD")) 
-@ 
-
-In summary, one can get a formal test from either the \code{timereg}
-function or by anova approach above.  
-To describe the shape of the effect requires a plot, or after looking
-at the plot one can choose to describe the hazard ratio 
-using a simple approximation.
-For the NAFLD effect in females the log(HR) is nearly linear 
-over the range of 20--100 years.  
-
 \subsection{Other summaries}
 
 
