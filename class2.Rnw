@@ -23,7 +23,7 @@ library(mstate,  quietly=TRUE)
 library(timereg, quietly=TRUE)
 options(show.signif.stars=FALSE)  # display statistical intelligence
 load('nafld.rda')
-table2 <- function(...) table(..., useNA="ifany")
+
 overlap <- with(nafld3, sum(event=="nafld" & days > 0)) #case and control
 @ 
 \maketitle
