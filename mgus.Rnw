@@ -21,32 +21,10 @@ crisk <- function(what, horizontal = TRUE, ...) {
 
 \section{Competing risk}
 \begin{frame}
-{\Large Competing risks}
+{\Large 3. Competing risks}
 \end{frame}
 
-\begin{frame}{How to model?}
-  \begin{itemize}
-     \item Model the individual rates $\lambda_{jk}(t)$ from state $j$
-     to state $k$
-       \begin{itemize}
-          \item Separate model for each transition
-	  \begin{itemize}
-	    \item which covariates for each
-	    \item which, if any, coefficients are shared
-	    \item what time scale for each transition (baseline hazard)
-	    \item do any transitions share a baseline
-	    \end{itemize}
-	  \item From the set of $\lambda$ functions $p(t)$, lifetime risk,
-	  and/or E(time in state) can all be computed
-        \end{itemize}
-     \item Model $p(t)$ directly (this is harder)
-     \item Model E(time in state) or lifetime risk directly. (I don't know of
-       a way to do this)
-     \end{itemize}
-\end{frame}
-
-
-\begin{frame}{Overview}
+\begin{frame}
 <<fourfig>>=
 oldpar <- par(mfrow=c(2,2), mar=c(.1, .1, .1, .1))
 crisk(c("Alive", "Dead"))
@@ -68,52 +46,46 @@ par(oldpar)
 @ 
 \end{frame}
 
-\begin{frame}{Modeling}
-  \begin{enumerate}
-  \item Draw the multi-state picture (boxes and arrows). \\
-        Tape it on the side of your terminal. \\
-        There may be more than one.
-  \item Create curves.  Look at them.
-  \item Think through the rates (arrows).
-    \begin{itemize}
-       \item Which covariates should be attached to each rate? 
-       \item Which transitions (if any) should have the same coefficients?
-       \item Which (if any) should share the same baseline hazard?
-       \item Random effects?
-    \end{itemize}
-  \item Build an appropriate data set.
-  \item Fit the rates.
-  \end{enumerate}
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item A given arrow only depends on the starting box and the transitions
-      \begin{itemize}
-        \item At risk = in the starting box
-        \item Event = transition of \emph{this} type, all others are treated
-          as censored
-      \end{itemize}
-    \item Pr(in state) depends on \emph{all} the transitions.  Curves must
-      be fit all at once.
-      \begin{itemize}
-        \item Nonparametric AJ \code{survfit(Surv(time, outcome) ~ \ldots)}
-        \item Cox model: some extra work
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
 \begin{frame}{Monoclonal Gammopathy of Undetermined Significance (MGUS)}
   \begin{itemize}
-    \item Subjects with a dominant clone (2\%) in their plasma cell population,
-      but without malignancy.  
+    \item Subjects with a dominant clone in their plasma cell population,
+      but without malignancy ($\ge 2$\% of plasma cells).  
     \item Normally found incidentally to other tests.
     \item Should the patient be worried?
       \pause
     \item About 1\% per year convert to overt malignancy.
     \item Essentially independent of age and sex.
-    \item Data set \code{mgus2} has information on 1384 subjects.
   \end{itemize}
+\end{frame}
+
+begin{frame}
+  \frametitle{Progression of MGUS}
+  \begin{itemize}
+    \item 1384 subjects with monoclonal gammopathy of undetermined significance
+      (MGUS)
+    \item R. Kyle, New Engl J Med 346:564-569 (2002)
+    \item Questions
+      \begin{itemize}
+        \item Pattern of death and progression
+        \item Relationship to age, sex, hemoglobin, creatinine,
+          and amount of protein in the ``spike''
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+<<kyle1, echo=TRUE>>=
+mgus2[1:5,]
+@
+
+\begin{itemize}
+  \item Classic data set
+    \begin{itemize}
+      \item One row per subject
+      \item Separate columns for death and plasma cell malignancy
+      \item Follow-up continues after PCM
+    \end{itemize}
+\end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -130,8 +102,29 @@ par(oldpar)
 @
 \end{frame}
 
+\begin{frame}{Competing Risks}
+  \begin{itemize}
+    \item For this model we are only interested in the first event for each
+      subject.
+    \item Formally we are treating progression to a plasma cell malignancy (PCM)
+      as an \emph{absorbing state}, i.e., one
+      that subjects never exit.
+      \pause
 
-\begin{frame}{Competing Risk}
+    \item The event variable was created as a \emph{factor}.
+      The first level of the factor must be censoring, which is the status code
+      for those whose follow-up terminated without reaching either endpoint.
+      Codes for the remaining states can be in any order. The labels are
+      arbitrary.
+    \item A simple print of the \code{pfit} object shows the order in
+      which the curves will be displayed.  This information was used to
+      choose the line types and colors for the curves.
+    \item Curves start at 0.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Competing Risk (Aalen-Johansen)}
 <<mgus2, echo=FALSE>>=
 etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
 event <- with(mgus2, ifelse(pstat==0, 2*death, 1))
@@ -172,7 +165,9 @@ pfit$event/pfit$pyears
 @ 
 \begin{itemize}
   \item Overall rate is 1\% per year for males, 1.1\% for females
-  \item In 15 years we would expect 15\% to progress
+  \item In 15 years we would expect 15\% to progress \\
+    \emph{if there were no deaths}
+  \item We saw 114 actual progressions in 30 years (13\%).
 \end{itemize}
 \end{frame}
 
@@ -242,7 +237,6 @@ lifeleft <- colSums(efit1$surv)/2  # area under the curve
   \end{itemize}
 \end{frame}
 
-\begin{frame}
 <<mgus3>>=
 pcmbad <- survfit(Surv(etime, pstat) ~ sex, data=mgus2)
 plot(pcmbad, lwd=2, fun="event", conf.int=FALSE,

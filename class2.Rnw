@@ -170,7 +170,7 @@ data1 <- tmerge(data1, subset(nafld3, event=="dyslipidemia"), id,
                 dyslip = tdc(days), e3= event(days))
 data1$age1 <- with(data1, age + tstart/365.25)
 data1$age2 <- with(data1, age + tstop/365.25) 
-attr(data1, 'tcount')
+0attr(data1, 'tcount')
 @ 
 
 <<echo=FALSE>>=

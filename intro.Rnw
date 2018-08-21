@@ -50,7 +50,7 @@ Surv(test$time, test$status)
   \begin{itemize}
     \item ``time'' as incomplete data
       \begin{itemize}
-        \item $(t, \delta)$ and $X$
+        \item $(t, \delta)$ and covariates $X$
         \item The traditional viewpoint
         \item Won't be seen again.
        \end{itemize}
@@ -104,13 +104,14 @@ par(oldpar)
 @
 \end{frame}
   
-\begin{frame}{Four quantities}
+\begin{frame}{Quantities}
   \begin{itemize}
-    \item 1. Event rates (arrows) $\lambda_{jk}$
-    \item 2. Probability in state $p(t) = (p_1, p_2, \ldots p_k)(t)$
+    \item 1. Event rates (arrows): $\lambda_{jk}$
+    \item 2. Probability in state: $p(t) = (p_1, p_2, \ldots p_k)(t)$
     \item 3. E(time in state)
-    \item 4. Pr(ever visit a state)or lifetime risk
-    \item All should be used
+    \item 4. Pr(ever visit a state) or lifetime risk
+    \item 5. Visit times for a state
+    \item Number 1 is not enough
   \pause
     \item Statisticians in the field tend to flip back and forth between
       1 and 2, which can confuse onlookers.
@@ -121,17 +122,20 @@ par(oldpar)
 \begin{frame}{Event rates}
   \begin{itemize}
      \item Simple rate $r = \sum d_i/ \sum t_i$ \\
-       $P(y > t) = \exp(-r t)$
-     \item $r(t)$, $h(t)$, $\lambda(t)$ \\ 
-     \item Kaplan-Meier curves
-     \item Proportional hazards (Cox) model
-     \item Log-rank test
+       $P(T > t) = \exp(-r t)$
+     \item labeled as $r(t)$, $h(t)$, $\lambda(t), \alpha(t)$ \\
+     \item Underpin
+       \begin{itemize}
+         \item Kaplan-Meier curves
+         \item Proportional hazards (Cox) model
+         \item Log-rank test
+       \end{itemize}
  \pause       
      \item Martingale theory gives a formal underpinning.
        \begin{itemize}
            \item $(N(t), Y(t))$ and $X(t)$ or $Z(t)$ 
-           \item $N_i(t)$ = number of events so far \\
-               $Y_i(t)$ = 1 if 'under observation' at time $t$
+           \item $N_{ij}(t)$ = number of events so far, subject $i$, event type $j$\\
+               $Y_{ij}(t)$ = 1 if subject is at risk for event type $j$ at time $t$
        \end{itemize}
   \end{itemize}
 \end{frame}
@@ -164,7 +168,7 @@ par(oldpar)
   \end{itemize}
 \end{frame}
 
-\begin{frame}
+\begin{frame}{Mayo Clinic Study of Aging}
 <<shift1>>=
 oldpar <- par(mfrow=c(2,2), mar=c(5.1, 4.1, 1.1, 1.1))
 xx <- seq(0, 10, length=100)
@@ -226,8 +230,8 @@ par(oldpar)
     \item You cannot cease following someone because of something that will
       happen in the future.
       \begin{itemize}
-         \item Analysis of those who "comply with the treatment"
-	 \item People drop out because they are about to fail \\
+         \item Look ahead: analysis of those who "comply with the treatment"
+	 \item People who drop out because they are about to fail \\
 	     MDPIT trial (Oakes, JASA 1993; 88:44-49)
 	 \item Only those who are sick respond to queries.
 	 \pause

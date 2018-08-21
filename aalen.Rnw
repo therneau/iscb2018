@@ -41,7 +41,7 @@ state4 <- function() {
 
 \section{Aalen-Johansen Curves}
 \begin{frame}
-{\large Probability in State}
+{\Large 2. Probability in State}
 \end{frame}
 
 \begin{frame}{Transplant outcome}
@@ -80,9 +80,11 @@ crisk(c("Waiting list", "transplant", "withdraw", "death"))
         \item age, sex, blood type, year of listing
         \item follow-up time and event = (death, ltx, withdraw, censor)
       \end{itemize}
-    \item Aalen-Johansen estimate \\
-      \code{survfit(Surv(futime, event) $\sim$ 1, data=transplant)}
   \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Aalen-Johansen estimate}
+    \code{survfit(Surv(futime, event) $\sim$ 1, data=transplant)}
 
 <<tfit, echo=FALSE>>=
 period <- cut(transplant$year, c(1989, 1992, 1995, 1997, 2000),
@@ -102,7 +104,7 @@ legend(360, .8, pfit$states, lty=1, lwd=2, col=1:4)
 plot(pfit[,1:2], mark.time=FALSE, xscale=30.5, xmax=735,
      col=1:4, xaxt='n', lwd=rep(2:1, each=4),
      xlab="Months on waiting list",
-     ylab="Fraction transplanted and dead")   #time to liver transplant
+     ylab="Fraction transplanted, fraction dead")   #time to liver transplant
 temp <- c(0,6,12,18,24)
 axis(1, temp*30.5, temp)
 legend(400, .4, levels(period), lty=1, col=1:4, lwd=2, bty='n')
@@ -192,7 +194,7 @@ What's wrong?
         and withdrawal were abolished}.  That was not the question.
       \item The estimate assumes uninformative censoring, i.e., those who
         were removed due to transplant were a random sample of those at risk
-        for death.
+        for death.  Rarely true, if ever.
     \end{enumerate}
   \item Unreliable estimate of an uninteresting quantity.\pause
   \item The multi-state curve estimates the fraction of subjects who will
@@ -251,6 +253,7 @@ R-help (December 2009)
    \item T. Therneau, Multi-state models, R survival package.
    \item J. Beyersmann, A Allignol, M. Schumacher, Competing and multistate
      models in R.
+   \item R. Cook and J. Lawless, Multi-state models. 2018
  \end{itemize}
 \end{frame}
 
@@ -263,8 +266,8 @@ Let $t_1$, $t_2$, \ldots be the unique death times.
  FH(t) &= \prod_{s \le t}\exp[-\lambda(s)]
  \end{align*}
 
-Cox model code can use a Kaplan-Meier like estimate (Kalbfleish-Prentice)
-or a Fleming-Harrington like one (Breslow); the latter is easier to
+Cox model code can use a Kaplan-Meier analog (Kalbfleish-Prentice)
+or a Fleming-Harrington analog (Breslow); the latter is easier to
 compute.
 \end{frame}
 
@@ -312,14 +315,16 @@ Then
       \begin{enumerate}
         \item Divide time into a bunch of intervals
         \item Within each interval calculate the naive rate of 
-          transition $r_{ij}(t)$ for each pair of states $i$ and $j$\\
+          transition $r(t)$ for death\\
           = (number making the transtion) / time at risk
-        \item Markov model estimate is $p(0) [R(1) t_1][ R(2)t_2] \ldots$.
+        \item Markov model estimate is $p(0) [r_1 t_1][ r_2 t_2] \ldots$.
       \end{enumerate}
     \item For a 2 state alive-dead model this yields the ``actuarial'' 
       estimator.
       \begin{itemize}
-        \item Once quite common.
+        \item Once quite common. 
+        \item Applies to tabulated data (like Graunt's).
+        \item Nuisance: how wide should the intervals be?
       \end{itemize}
     \pause
     \item For the 2 state model, let the widths of the intervals go to zero.
@@ -333,15 +338,15 @@ Then
 \end{frame}      
  
 \begin{frame}{Exercises}
-  \begin{itemize}
+  \begin{enumerate}
     \item For the two state alive $\rightarrow$ dead model, show that 
       $p_1(t)$ from the Aalen-Johansen estimate = Kaplan-Meier.
     \item For the competing risks model show that 
       $p(t)$ = ``cumulative incidence'' estimator.
-    \item Explain why it took 25 years to adopt the KM.
+    \item Explain why it took 25 years for statisticians to adopt the KM.
     \item Explain why it has been over 35 years for the AJ, and it still is
-      rare. (Statisticians are getting even slower?)
-  \end{itemize}
+      rare. (We are getting even slower?)
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -369,14 +374,14 @@ fit <- survfit(Surv(time, status) ~ group, data=mydata)
   \end{align*}
  
   \begin{itemize}
-    \item The robust variance for a Cox model is an IJ estimate \\
-     So is the Horvitz-Thompson variance estimate (survey sampling) \\
-     The working independence variance of GEE models \\
+    \item The robust variance for a Cox model is an IJ estimate 
+    \item So is the Horvitz-Thompson variance estimate (survey sampling) 
+    \item The working independence variance of GEE models \\
      \ldots
     \item For a 2 state alive-dead model, the IJ estimate = Greewood's estimate
        \begin{itemize}
          \item empirically verified for a large number of data sets
-	 \item a proof is lacking
+	 \item Proof: Ann Eaton
 	 \end{itemize}
     \end{itemize}
 \end{frame}
@@ -528,7 +533,7 @@ par(oldpar)
   \item For each different state space configuration, create a data set.
     \begin{itemize}
       \item id, (time1, time2],  endpoint, covariates
-      \item The interval from time1 to time2 terminated with a given endpoint
+      \item The interval from time1 to time2 is terminated with a given endpoint
         at time2.
         \begin{itemize}
           \item censor, dead
@@ -692,7 +697,7 @@ tdata[1:10, c('id', 'trt', 'tstart', 'tstop', 'event', "crstat")]
 <<echo=TRUE>>=
 sfit4 <- survfit(Surv(tstart, tstop, event) ~ trt, data2, id=id)
 
-sfit4$transtions
+sfit4$transitions
 @
 \end{frame}
 
