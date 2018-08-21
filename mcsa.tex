@@ -148,16 +148,58 @@
 
 \begin{frame}{Hidden Markov Model}
   \begin{itemize}
-    \item $(t, y(s))$.  The state $s$ is not observed directly, rather a vector
-      of covariates $y$ whose distribution depends on the state.
+    \item  The data consists of time, outcomes and covariates
+      \begin{itemize}
+        \item The state is not observed directly, rather we see one or
+          more outcomes that depend on the underlying state.
+        \item No need for (time1, time2, endpoint) notation
+        \item Data will have missing values, e.g., covariates on the day
+          of death
+      \end{itemize}
     \item Same box and arrow model for the states, covariates connect to
       $\lambda$ as before
-    \item Another set of parameters connect $s$ to $y$
+    \item Another set of parameters for the arrows that connect state to outcome
     \item Allows for more episodic data.
     \item Much of the software is special purpose.
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{1, 1, 1}\color{fgcolor}
+\includegraphics[width=\textwidth,height=!]{figures/model1cc-1} 
+
+\end{knitrout}
+\end{frame}
+ 
+\begin{frame}
+  \begin{itemize}
+    \item log(measured amyloid binding) $ \sim N(A^-/A^+, \sigma)$
+    \item global memory score $\sim N(\mu, \tau)$ \\
+      $\mu = \beta_0 + \beta_1N + \beta_2\mbox{sex} + \beta_3\mbox{education}$
+    \item $A^-:A^+$ rate depends on APOE status, but on gender
+    \item $N$ transition rates depend on $A$ but not vice-versa
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{HMM}
+  \begin{itemize}
+    \item Very powerful concept
+    \item Downsides
+      \begin{itemize}
+        \item Easy to get carried away
+        \item Computation is \emph{much} harder than a Cox model
+          \begin{itemize}
+            \item good starting estimates
+            \item compute cluster
+            \item patience
+          \end{itemize}
+        \item Few model checking methods
+        \item Long manual
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+  
 \begin{frame}
   \myfig{rate1}
 \end{frame}

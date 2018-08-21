@@ -17,6 +17,13 @@ crisk <- function(what, horizontal = TRUE, ...) {
     if (horizontal) statefig(c(1, nstate-1),  connect, ...)
     else statefig(matrix(c(1, nstate-1), ncol=1), connect, ...)
 }
+state3 <- function(what, horizontal=TRUE, ...) {
+    if (length(what) != 3) stop("Should be 3 states")
+    connect <- matrix(c(0,0,0, 1,0,0, 1,1,0), 3,3,
+                      dimnames=list(what, what))
+    if (horizontal) statefig(1:2, connect, ...)
+    else statefig(matrix(1:2, ncol=1), connect, ...)
+}
 @ 
 
 \section{Competing risk}
@@ -52,13 +59,12 @@ par(oldpar)
       but without malignancy ($\ge 2$\% of plasma cells).  
     \item Normally found incidentally to other tests.
     \item Should the patient be worried?
-      \pause
     \item About 1\% per year convert to overt malignancy.
     \item Essentially independent of age and sex.
   \end{itemize}
 \end{frame}
 
-begin{frame}
+\begin{frame}
   \frametitle{Progression of MGUS}
   \begin{itemize}
     \item 1384 subjects with monoclonal gammopathy of undetermined significance
@@ -102,6 +108,34 @@ par(oldpar)
 @
 \end{frame}
 
+
+\begin{frame} {Common analysis}
+<<kyle2, echo=FALSE>>=
+etime <- with(mgus2, pmin(futime, ptime))
+event <- with(mgus2, ifelse(pstat==0, 2*death, 1))
+event <- factor(event, 0:2, c("censor", "PCM", "death"))
+kdeath <- survfit(Surv(etime, event=='death') ~ sex, data=mgus2)
+kprog  <- survfit(Surv(etime, event=='PCM') ~ sex, data=mgus2)
+plot(kdeath, col=1:2, mark.time=FALSE, xscale=12, 
+     xlab="Years")
+lines(kprog, col=1:2, mark.time=FALSE, xscale=12, lty=2)
+legend(132, .7, c("F", "M"), col=1:2, lty=1, bty='n')
+text(240, .92, "PCM, censoring at death")
+text(200, .36, "Death, censoring at PCM", adj=0)
+@ 
+\end{frame}
+
+\begin{frame}
+<<kyle2b>>=
+plot(kdeath, col=1:2, mark.time=FALSE, xscale=12, 
+     xlab="Years")
+lines(kprog, col=1:2, mark.time=FALSE, xscale=12, lty=2)
+legend(132, .7, c("F", "M"), col=1:2, lty=1, bty='n')
+text(240, .92, "PCM, censoring at death")
+lines(mfit1, col=1:2, lwd=2)
+@ 
+\end{frame}
+
 \begin{frame}{Competing Risks}
   \begin{itemize}
     \item For this model we are only interested in the first event for each
@@ -109,9 +143,8 @@ par(oldpar)
     \item Formally we are treating progression to a plasma cell malignancy (PCM)
       as an \emph{absorbing state}, i.e., one
       that subjects never exit.
-      \pause
 
-    \item The event variable was created as a \emph{factor}.
+    \item The event variable was created as a factor.
       The first level of the factor must be censoring, which is the status code
       for those whose follow-up terminated without reaching either endpoint.
       Codes for the remaining states can be in any order. The labels are
@@ -134,12 +167,12 @@ mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2)
 
 oldpar <- par(mar=c(5.1, 4.1, 1,.1))
 layout(matrix(1:2,1,2), widths=2:1)
-plot(mfit2, col=c(1,2,1,2), lty=c(2,2,1,1),
+plot(mfit2, col=c(1,2,1,2), lty=c(1,1,2,2),
      mark.time=FALSE, lwd=2,  xscale=12,
      xlab="Years post diagnosis", ylab="Probability in State")
 legend(170, .5, c("death w/o PCM:f", "death w/o PCM:m", 
                   "PCM:female", "PCM:male"), 
-       col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
+       col=c(1,2,1,2), lty=c(2,2,1,1), lwd=2, bty='n')
 
 crisk(c("MGUS", "PCM", "Death"))
 par(oldpar)
@@ -151,13 +184,131 @@ layout(1)
 <<mgus2b, echo=TRUE>>=
 mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2)
 print(mfit2, rmean=240, scale=12)
+@ 
+\end{frame}
 
-with(mgus2, table(event, sex))
+\begin{frame}{Footnote: Alternate model}
+<<cr2>>=
+par(mfrow=c(1,2), mar=c(5.1, 4.1, 1,1))
+crisk(c("MGUS", "PCM", "Death"))
+state3(c("MGUS", "PCM", "Death"))
 @ 
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Event rates}
+  \begin{itemize}
+    \item Left figure: ever PCM and death without PCM
+    \item Right figure: currently in PCM, ever dead
+    \item Same status variable, different data set
+  \end{itemize}
+
+Raw data
+<<>>=
+mgus2[80:83, c("id", "age", "sex", "ptime", "pstat", "futime","death")]
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+CR data: add two variables
+<<>>=
+m2 <- mgus2
+m2$etime <-etime; m2$event <- event
+m2[80:83, c("id", "age", "sex", "ptime", "pstat", "futime","death", "etime",
+            "event")]
+@ 
+
+Figure 2: add lines
+<<>>=
+ptemp <- with(mgus2, ifelse(ptime==futime & pstat==1, ptime-.1, ptime))
+mgus3 <- tmerge(mgus2, mgus2,  id=id, death=event(futime, death),
+                  pcm = event(ptemp, pstat))
+mgus3 <- tmerge(mgus3, mgus3, id, enum=cumtdc(tstart))
+mgus3$event <- factor(mgus3$pcm + 2*mgus3$death, 0:2, 
+                      c("censor", "PCM", "death"))
+subset(mgus3, id %in% 80:83, c(id, age, sex, tstart, tstop, event))
+@ 
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item The first version of the data set generated errors.
+    \item 9 subjects have PCM and death declared at the same time.
+    \item Treated as PCM in the CR analysis
+    \item For the multi-state model we need to be explicit
+    \item Push progressions back by .1 month when there is a tie
+      \pause
+    \item Many data sets have case like this.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+<<mguspair>>=
+par(mfrow=c(1,2), mar=c(5.1, 4.1, 1,1))
+plot(mfit2, xscale=12, col=1:2, lwd=2, lty=c(1,1,2,2))
+pfit3 <- survfit(Surv(tstart, tstop, event) ~ sex, mgus3, id=id)
+plot(pfit3, xscale=12, col=1:2, lwd=2, lty=c(1,1,2,2))
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+<<kyle10, echo=FALSE>>=
+plot(pfit3[,1], mark.time=FALSE, lwd=2, col=1:2,
+     xscale=30.5, xlab="Years post diagnosis", ylab="Alive with PCM")
+@ 
+\end{frame}
+
+\begin{frame}[fragile]{Look at multiple factors}
+<<kyle4, echo=TRUE, fig.show="hide">>=
+oldage <- (mgus2$age > 70)
+bigm   <- mgus2$mspike > 1
+pfit2 <- survfit(Surv(etime, event) ~ oldage + sex + 
+                 bigm, data= mgus2)
+
+plot(pfit2, col=1:8, lty=rep(1:2, each=8), mark.time=FALSE,
+     xscale=12, xlab="Years since MGUS")
+@ 
+\end{frame}
+
+
+\begin{frame}{Tangle of yarn plot}
+  \myfig{kyle4-1}
+\end{frame}
+
+
+\begin{frame}{Hazard models}
+  \begin{itemize}
+     \item Model the individual rates $\lambda_{jk}(t)$ from state $j$
+       to state $k$
+     \item Separate model for each transition
+	\begin{itemize}
+	  \item which covariates for each
+	  \item which, if any, coefficients are shared
+	  \item what time scale for each transition (baseline hazard)
+	  \item do any transitions share a baseline
+	\end{itemize}
+      \item A given arrow only depends on the starting box and the transitions
+        \begin{itemize}
+          \item At risk = in the starting box
+          \item Event = transition of \emph{this} type, all others are treated
+            as censored
+        \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+<<cmugus1, echo=TRUE>>=
+cfit1 <- coxph(Surv(etime, event=="death") ~ sex + mspike, mgus2)
+round(summary(cfit1)$coef, 2)
+
+cfit2 <- coxph(Surv(etime, event=="PCM") ~ sex + mspike, mgus2)
+round(summary(cfit2)$coef, 2)
+
+quantile(mgus2$mspike, na.rm=TRUE)
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Simple event rates}
 <<mgu2sb, echo=TRUE>>=
 pfit <- pyears(Surv(ptime, pstat) ~ sex, scale=12*100, 
                  data=mgus2)
@@ -165,33 +316,11 @@ pfit$event/pfit$pyears
 @ 
 \begin{itemize}
   \item Overall rate is 1\% per year for males, 1.1\% for females
-  \item In 15 years we would expect 15\% to progress \\
+  \item In 15 years we would expect 15--16\% to progress \\
     \emph{if there were no deaths}
-  \item We saw 114 actual progressions in 30 years (13\%).
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
-<<cmugus1, echo=TRUE>>=
-cfit1 <- coxph(Surv(ptime, pstat) ~ sex + mspike, mgus2)
-round(summary(cfit1)$conf.int, 2)
-
-quantile(mgus2$mspike, na.rm=TRUE)
-
-cfit2 <- coxph(Surv(futime, death) ~ sex + mspike, mgus2)
-round(summary(cfit2)$conf.int, 2)
-@ 
-\end{frame}
-
-\begin{frame}
-\begin{itemize}
-  \item Sex has no impact on the rate of progression to PCM \\
-    but a major impact on death (22\% increase)
-  \item Size of the original monoclonal has a large effect
-    on PCM \\
-    but almost no impact on death rates
-\end{itemize}
-\end{frame}
 
 \begin{frame}{Progression to PCM}
 <<mgus2d>>=
@@ -237,6 +366,7 @@ lifeleft <- colSums(efit1$surv)/2  # area under the curve
   \end{itemize}
 \end{frame}
 
+\begin{frame}
 <<mgus3>>=
 pcmbad <- survfit(Surv(etime, pstat) ~ sex, data=mgus2)
 plot(pcmbad, lwd=2, fun="event", conf.int=FALSE,
@@ -248,335 +378,6 @@ legend(0, .18, c("PCM, incorrect curve", "PCM, competing risk"),
 @ 
 \end{frame}
 
-<<echo=FALSE>>=
-require("survival")
-opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=FALSE,
-               fig.with=7, fig.height=5.5, fig.path="figures/",
-               out.width="\\textwidth", out.height="!", device="pdf",
-               cache=FALSE, background="#ffffff",
-               warning=FALSE, error=FALSE, prompt=TRUE)
-options(contrasts= c("contr.treatment", "contr.poly"),
-        show.signif.starts = FALSE, continue=" ", width=60)
-par(mar=c(4.1, 4.1, 1.1, 1.1))
-
-state3 <- function(what, horizontal=TRUE, ...) {
-    if (length(what) != 3) stop("Should be 3 states")
-    connect <- matrix(c(0,0,0, 1,0,0, 1,1,0), 3,3,
-                      dimnames=list(what, what))
-    if (horizontal) statefig(1:2, connect, ...)
-    else statefig(matrix(1:2, ncol=1), connect, ...)
-}
-@ 
-
-\begin{frame}
-  \frametitle{Progression of MGUS}
-  \begin{itemize}
-    \item 1384 subjects with monoclonal gammopathy of undetermined significance
-      (MGUS)
-    \item R. Kyle, New Engl J Med 346:564-569 (2002)
-    \item Questions
-      \begin{itemize}
-	\item Pattern of death and progression
-	\item Relationship to age, sex, hemoglobin, creatinine, 
-	  and amount of protein in the ``spike''
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle1, echo=TRUE>>=
-mgus2[1:5,]
-@ 
-\begin{itemize}
-  \item Classic data set
-    \begin{itemize}
-      \item One row per subject
-      \item Separate columns for death and plasma cell malignancy
-      \item Follow-up continues after PCM
-    \end{itemize}
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Common analysis}
-<<kyle2, echo=FALSE>>=
-kdeath <- survfit(Surv(futime, death) ~ sex, data=mgus2)
-kprog  <- survfit(Surv(ptime, pstat) ~ sex, data=mgus2)
-plot(kdeath, col=1:2, mark.time=FALSE, xscale=12, 
-     xlab="Years")
-lines(kprog, col=1:2, mark.time=FALSE, xscale=12, lty=2)
-legend(132, .7, c("F", "M"), col=1:2, lty=1, bty='n')
-@ 
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle3, echo=TRUE, fig.show="hide">>=
-etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
-event <- with(mgus2, ifelse(pstat==0, 2*death, 1))
-event <- factor(event, 0:2, 
-                labels=c("censor", "pcm", "death"))
-table(event)
-
-pfit <- survfit(Surv(etime, event) ~ sex, data=mgus2)
-print(pfit)
-plot(pfit)
-@ 
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle2c, echo=FALSE>>=   
-plot(pfit, mark.time=FALSE, xscale=30.5,
-     col=c(1,1,2,2), lty=c(1,2,1,2), lwd=2,
-     ylab="prevalence", xlab="Years")
-legend(150, .5, c("Death, F", "Death, M", "PCM, F", "PCM, M"),
-      col=c(1,1,2,2), lty=c(2,1,2,1), lwd=2, bty='n')
-@ 
-\end{frame}
-
-
-\begin{frame}{Competing Risks}
-  \begin{itemize}
-    \item For this model we are only interested in the first event for each
-      subject.
-    \item Formally we are treating progression to a plasma cell malignancy (PCM)
-      as an \emph{absorbing state}, i.e., one 
-      that subjects never exit. 
-      \pause
-      
-    \item The event variable was created as a \emph{factor}.
-      The first level of the factor must be censoring, which is the status code
-      for those whose follow-up terminated without reaching either endpoint.
-      Codes for the remaining states can be in any order. The labels are
-      arbitrary.
-    \item A simple print of the \code{pfit} object shows the order in
-      which the curves will be displayed.  This information was used to 
-      choose the line types and colors for the curves.
-    \item Curves start at 0.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Tangle of yarn plot}
-<<kyle4, echo=TRUE, fig.show="hide">>=
-oldage <- (mgus2$age > 70)
-bigm   <- mgus2$mspike > 1
-pfit2 <- survfit(Surv(etime, event) ~ oldage + sex + 
-                 bigm, data= mgus2)
-
-plot(pfit2, col=rep(1:2, each=4), mark.time=FALSE,
-     xscale=30.5)
-@ 
-\end{frame}
-
-\begin{frame}
-  \myfig{kyle4-1}
-\end{frame}
-
-\begin{frame}{subsets}
-  \begin{itemize}
-    \item For multi-state models arrangement, colors, and line types of the
-      curves can be more time consuming than creating them
-      \begin{itemize}
-        \item Easy to plot a subset
-      \end{itemize}
-    \item Use this to simplify the plots
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle5, echo=FALSE>>=
-par(mfrow=c(1,2))
-pfit3 <- survfit(Surv(etime, event) ~ oldage + sex, mgus2)
-plot(pfit3[,2], col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2,
-     xscale=30.5, mark.time=FALSE,
-     xlab="Years post diagnosis", ylab="Death")
-legend(6*30.5, .35, c("M >70", "F > 70", "M <=70", "F <=70"),
-        col=c(2,1,2,1), lty=c(2,2,1,1), lwd=2, bty='n', cex=.8)
-plot(pfit3[,1], col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2,
-     xscale=30.5, mark.time=FALSE,
-     xlab="Years post diagnosis", ylab="Progression")
-@ 
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle6, echo=FALSE>>=
-par(mfrow=c(1,2))
-plot(pfit3[1:2,], col=c(1,1,2,2), lty=c(2,1,2,1), lwd=2,
-     xscale=30.5, mark.time=FALSE,
-     xlab="Years post diagnosis", ylab="P(state), age <=70")
-legend(0, .85, c("M death", "F death", "M PCM", "F PCM"),
-        col=c(2,1,2,1), lty=c(1,1,2,2), lwd=2, bty='n', cex=.8)
-plot(pfit3[3:4,],  col=c(1,1,2,2), lty=c(2,1,2,1), lwd=2,
-     xscale=30.5, mark.time=FALSE,
-     xlab="Years post diagnosis", ylab="P(state), age >70")
-par(mfrow= c(1,1))
-@ 
-\end{frame}
-
-%\begin{frame}
-%  \myfig{box2}
-%\end{frame}
-
-\begin{frame}{Multistate models}
-  For multi-state data we normally use a (start, stop] data set.
-\vspace{.2in}
-
-$$
-\begin{tabular}{ccccccc}
-  id & time1 & time2 & status & sex & age&  systolic \\
-  21 &  0    &    15 &    0   &  F &  25 &  117 \\
-  21 & 15    &    45 &    1   &  F &  25 &  135 \\
-  40 &  6    &    68 &    1   &  M &  48 &  144 \\
-  \vdots
-\end{tabular}
-$$
-\begin{itemize}
-  \item time1, time2: over the interval (time1, time2]
-  \item sex, age, systolic: covariates
-  \item status: did the interval end in an event?
-  \item tracks each subject through time 
-    \pause
-  \item often the starting point for further data sets
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item Easy (but boring) to build
-    \item Easy to build it wrong  -- read the results!
-    \begin{itemize}
-      \item During any time that the subject is at risk, there is
-        an interval in the data containing them
-      \item No more than 1 copy of the subject at any given time (per strata)
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-<<mgus3b>>=
-state3(c("MGUS", "PCM", "Death"))
-@ 
-\begin{tabular}{cccccccc}
-  id & age& sex & hgb& ptime & pstat & futime & death\\ \hline
- 55 & 82 &  F& 11.0  &   94 &    0 &    94 &    1\\
- 56 & 78 &  M &10.3   &  29  &   1  &   44  &   1\\
- 57 & 79 &  F& 13.6 &    84 &    0  &   84  &   1
- \end{tabular}
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item 9 subjects have PCM and death declared at the same time.
-    \item Treated as PCM in the CR analysis
-    \item For the multi-state model we need to be explicit
-    \item Push progressions back by .1 month when there is a tie
-      \pause
-    \item Many data sets have case like this.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<mgus4, echo=TRUE>>=
-ptemp <- with(mgus2, ifelse(ptime==futime & pstat==1, ptime-.1, ptime))
-mgus3 <- tmerge(mgus2, mgus2,  id=id, death=event(futime, death),
-                  pcm = event(ptemp, pstat))
-mgus3 <- tmerge(mgus3, mgus3, id, enum=cumtdc(tstart))
-mgus3$event <- factor(mgus3$pcm + 2*mgus3$death, 0:2, 
-                      c("censor", "PCM", "death"))
-with(mgus3, table(death, pcm))
-@ 
-The table above shows that there are no observations in \code{mgus3}
-that have both a PCM and death, i.e., the ties have been resolved.
-The last \code{tmerge} line above creates a variable \code{enum} which
-simply counts rows for each person; it will be used later.
-\end{frame}
-
-\begin{frame}
-<<kyle9c, echo=FALSE>>=  
-pfit3 <- survfit(Surv(tstart, tstop, event) ~ sex, 
-                 data= mgus3, id=id)
-oldpar <- par(mar=c(5.1, 4.1, 1.1, .1))
-layout(matrix(c(1,1,2,3), 2,2), widths=2:1)
-
-plot(pfit3, mark.time=FALSE, lwd=2, col=c(1,2,1,2),
-     lty=c(1,1,2,2), xscale=30.5,
-     xlab="Years post diagnosis", ylab="P(state)")
-
-legend(6*30.5 , .5, c("M death", "F death", "M alive with PCM",
-                "F alive with PCM"), col=c(1,2,1,2), 
-       lty=c(2,2,1,1), bty='n')
-par(mar=c(4, .1, 1, 1))
-state3(c("Entry", "PCM", "Death"))
-
-par(oldpar)
-@        
-\end{frame}
-
-\begin{frame}[fragile]
-<<kyle10, echo=FALSE>>=
-plot(pfit3[,1], mark.time=FALSE, lwd=2, col=1:2,
-     xscale=30.5, xlab="Years post diagnosis", ylab="Alive with PCM")
-@ 
-\end{frame}
-
-
-\begin{frame}{Warnings}
-  Whenever the data/fit can have multiple transitions for one person
-  \begin{itemize}
-    \item Remember the \code{id} statement
-    \item The program has no way of knowing which rows go together without it,
-      and instead will assume subjects have delayed entry
-    \item A correct answer to the wrong question.  (Variance too).
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item Individuals cannot have a ``hole'' in their follow-up time.
-    \item Example: panel data
-      \begin{itemize}
-        \item Smith enters state 1 at one year
-        \item The next time we see him, one year later, he is in state 3
-          but we don't know when he made the transition.
-        \item msm package
-      \end{itemize}
-    \item Example: gaps in follow-up
-  \end{itemize}
-\end{frame}
-  
-% Further work with fits
-\begin{frame}{Cause specific rate models}
-  \begin{itemize}
-    \item Fit a separate model for each rate (arrow)
-    \item Questions
-      \begin{itemize}
-        \item Which covariates for each rate?
-        \item Standard Cox model stuff (PH, outliers, linearity, \ldots)
-         \end{itemize}
-      \pause
-    \item Data
-      \begin{itemize}
-        \item Each model involves only those at risk for the rate =
-          members of the box at the foot of the arrow.
-        \item Those who leave, for whatever reason, are censored.
-        \item The only events of interest are moves along this arrow.
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<mfit3, echo=TRUE>>=
-cfit1 <- coxph(Surv(etime, event=="pcm") ~ age + sex+ mspike, 
-               data= mgus2)
-temp <- summary(cfit1, scale=c(10,1,1))
-round(temp$conf.int, 2) 
-#
-cfit2 <- coxph(Surv(etime, event=="death") ~ age + sex+ mspike, 
-               data= mgus2)
-temp <- summary(cfit2, scale=c(10,1,1))
-round(temp$conf.int, 2) 
-@       
-\end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Consequences of the rates}
@@ -592,7 +393,7 @@ round(temp$conf.int, 2)
           proper curves require \emph{all} the rates.
      \item Aalen-Johansen estimator, with $\lambda(t | z)$ as entries.
        \item Result is 8 curves: predicted lifetime risk of PCM and of
-         death before PCM, each for m/f x diagnosis at age 60/80.
+         death before PCM, each for m/f  at age 60/80.
     \end{itemize}
   \end{itemize} 
 \end{frame}
@@ -639,61 +440,37 @@ legend(10, .14, outer(c("female", "male   "),
    \end{tabular} \end{center}
 
 \begin{itemize}
-  \item 2\% increase for females
+  \item 2.5\% increase for females
   \item Not a constant wrt to other covariates, even though the 
     HR for sex is constant within each each of death and PCM.\\
     PH for components $\ne$ PH for the composite.
   \item A good summary is a population average prediction = mean prediction
     over the all the other covariates.
-  \item Currently that is some busy work, standard error is hard though.
-  \item Mean time in state is an alternative, but odd.
+    \begin{itemize}
+      \item For each combination of age and mspike in the data set
+      \item Compute the CI curves, tabulate the difference at age 90
+      \item Bootstrap
+    \end{itemize}
 \end{itemize}
 \end{frame}
 
-\begin{frame}
-<<mstate3>>=
-par(mfrow=c(1,2))
-crisk(c("MGUS", "PCM", "Death"))
-state3(c("MGUS", "PCM", "Death"))
-par(mfrow=c(1,1))
-@ 
-\end{frame}
-
-% leave this out of the slides
-%\begin{frame}[fragile]
-%<<stime, echo=FALSE>>=
-%newdata
-%print(csurv[,2], rmean=25*12)
-%@ 
-
-%\begin{itemize}
-%  \item 23.6 vs 20.9 (2.7 months) for 60 year olds
-%  \item 18.4 vs 14.0 (4.4 months) for 80 year olds
-%  \item Absolute effect is small; few 
-%\end{frame}
-
-\begin{frame}
-<<mfit5>>=
-plot(csurv[,3], xmax=25*12, xscale=12, 
-     xlab="Years after MGUS diagnosis", ylab="Death before PCM",
-     col=1:2, lty=c(1,1,2,2), lwd=2)
-legend(110, .25, outer(c("female", "male   "), 
-                     c("diagnosis at age 60", "diagnosis at age 80"), 
-                      paste, sep=", "),
-       col=1:2, lty=c(1,1,2,2), bty='n', lwd=2)
-@ 
-\end{frame}
 
 \begin{frame}{mstate package}
   \begin{itemize}
-    \item Issue: separate Cox models for each transition, 
-      all are used to create the curves
-    \item survival package: glue them together by hand
-    \item mstate:
+    \item Create a \emph{stacked} data set
       \begin{itemize}
-        \item create a marked up data set (add a transition matrix)
-        \item fit the Cox models all at once
-        \item curves use the resulting \code{mstate} object
+        \item 1384 obs for the MGUS to PCM transition
+        \item 1384 obs for the MGUS to death transition
+        \item 115 obs for the PCM to death transtion (optional)
+        \item Add \code{from} and \code{to} as covariates
+        \item Each obs has \code{status} =1 if \emph{this} transition occured
+      \end{itemize}
+    \item Create a 3x3 transition matrix
+    \item Fit all the models at once \\
+      \code{coxph(Surv(time, status) ~ (age + sex)* strata(from, to), ...)}
+    \item The \code{mfit} command will create the AJ curves
+      \begin{itemize}
+        \item includes variance/covariace
       \end{itemize}
   \end{itemize}
 \end{frame}

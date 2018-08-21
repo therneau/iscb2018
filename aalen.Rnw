@@ -716,3 +716,30 @@ sfit4$transitions
      \item Fit the model
   \end{itemize}
 \end{frame}
+
+
+
+\begin{frame}{Warnings}
+  Whenever the data/fit can have multiple transitions for one person
+  \begin{itemize}
+    \item Remember the \code{id} statement
+    \item The program has no way of knowing which rows go together without it,
+      and instead will assume subjects have delayed entry
+    \item A wrong answer to the wrong question.  (Variance too).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item Individuals cannot have a ``hole'' in their follow-up time.
+    \item Example: panel data
+      \begin{itemize}
+        \item Smith enters state 1 at one year
+        \item The next time we see him, one year later, he is in state 3
+          but we don't know when he made the transition.
+        \item msm package
+      \end{itemize}
+    \item Example: gaps in follow-up
+  \end{itemize}
+\end{frame}
+  
