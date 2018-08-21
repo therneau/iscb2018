@@ -13,7 +13,7 @@
 <<echo=FALSE>>=
 opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
                fig.with=5, fig.height=3.5, fig.path="figures/",
-               out.width=".9*\\textwidth", out.height="!", device="pdf",
+               out.width="0.9\\textwidth", out.height="!", device="pdf",
                cache=FALSE, background="#FFFFFF", mypar=TRUE,
                warning=FALSE, error=FALSE)
 knit_hook$set(mypar = function(before, options, envir) {
@@ -150,11 +150,14 @@ On the first call, \code{data1} contains one row per subject and any
 baseline variables which do not change over time, such as enrollment age or sex,
 and \code{data2} is used to set the initial time line for the subject.
 Subsequent calls build on this data set, inserting new rows as necessary for
-time dependent covariates and events.
+time dependent covariates (created by tdc calls) and events (created by event
+calls).  
 The \code{tmerge} function automatically takes care of an important 
 distinction with tied times, namely that if subject Jones has a death on
 day 400 and subject Smith converts from control to NAFLD on day 400,
 then the time dependent covariate changes \emph{after} that event occurs.
+The new NAFLD value of 1 for Smith will apply to deaths that happen after
+day 400 but not to the one on day 400.
 Short variable names like \code{diab} for diabetes were chosen
 below to help printouts fit the page width.
 
@@ -170,7 +173,7 @@ data1 <- tmerge(data1, subset(nafld3, event=="dyslipidemia"), id,
                 dyslip = tdc(days), e3= event(days))
 data1$age1 <- with(data1, age + tstart/365.25)
 data1$age2 <- with(data1, age + tstop/365.25) 
-0attr(data1, 'tcount')
+attr(data1, 'tcount')
 @ 
 
 <<echo=FALSE>>=
@@ -191,10 +194,13 @@ row in the table.  Column labels are explained by figure \ref{fig:timeline}.
     of follow-up (`late').
     These are subjects whose first NAFLD fell within a year of the end of
     their time line, and the one year delay for ``confirmed'' pushed them
-    over the end.  The time dependent covariate \code{nafld} never turns
+    over the end.  (The time value in the \code{nafld3} data set is 1 year
+    after the actual notice of NAFLD; no other observations have this
+    offset added).  The time dependent covariate \code{nafld} never turns
     from 0 to 1 for these subjects. 
-    (These are all subjects who are also controls for someone else and 
-    have $\ge 7$ days of followup for that reason.)
+    (Why were these subject not removed earlier by my ``at least 7 days of
+    follow-up rule?  They are all controls for someone else and so appear
+    in the data at a younger age than their NAFLD date.)
   \item \Sexpr{tc[3,1]} of the diabetes diagnoses are before entry, i.e., 
     these are the prevalent cases.  One diagnosis occurred on the day of
     entry (``leading''), and will not be counted as a post-enrollment endpoint,
@@ -205,10 +211,13 @@ row in the table.  Column labels are explained by figure \ref{fig:timeline}.
     covariate \code{htn} will never become 1.  
 \end{itemize}
 
-Such a detailed look at data set construction may seem overmuch. 
+Such a detailed look at data set construction may seem overmuch.   
 Our experience is that issues with covariate and event timing
-occur in nearly all data sets, large or small.  
-If, for instance, some condition is noted at autopsy, do we want a particular
+occur in nearly all data sets, large or small.  The 13 NAFLD cases ``after
+last follow-up'' were for instance both a surprise and a puzzle to us;
+but we have learned through experience that it is best not to proceed until
+such puzzles are understood.  (This particular one was benign.)
+If, for instance, some condition is noted at autopsy, do we want the related
 time dependent covariate to change before or after the death event?
 Some sort of decision has to be made, and it is better to look and understand
 than to blindly accept some programming default.
@@ -316,9 +325,10 @@ we want further summaries than the hazard ratio.
 
 Start with a simple fit using follow-up time.
 The results show that, as expected, the age effect is dominating.
-There is a statistically significant non-linear effect of age;
+There is a statistically significant non-linear effect of age on the
+log hazard;
 however, figure \ref{fig:cfit1} shows that the effect is very close to
-log-linear.  
+linear.  
 The simple tests for non proportional hazards are not remarkable,
 but figure \ref{fig:zp1} shows a possibly interesting early effect for
 age and a strong quadratic effect for NAFLD.  
@@ -426,12 +436,13 @@ matplot(1:5, r2, log='y', pch="ffmm", col=c(2,2,1,1), lty=c(1,2,1,2),
 axis(1, 1:5, levels(agecut))
 @  
 
-Figure \ref{fig:rate1} shows yearly death rates per 1000.
+Figure \ref{fig:rate1} shows yearly death rates per 1000 (absolute) and
+figure \ref{fig:zp2} shows the ratios for NAFLD versus controls.
 We see that NAFLD levies a particularly heavy burden on younger females,
 in terms of relative rates, 
 while the hazard ratio for males is fairly constant.
 Interestingly, the NAFLD effect for females is  close to constant on
-the $\sqrt{\mbox{rate}}$ scale.  (And what do we do with that fact?)
+the $\sqrt{\mbox{rate}}$ scale.  (I don't yet have a good use for that fact.)
 
 \subsection{Summarizing a non-proportional effect}
 A formal way to understand non-proportionality is to fit an extended
@@ -487,7 +498,7 @@ $\beta(t)$, but with a major problem: we picked the form for $\beta(t)$
 by looking at the \code{cox.zph} plot. 
 As with a linear model that is chosen after looking at the scatterplot,
 any inference from such a fit is suspect.  
-Many authors suggest using $\beta(t) = \log(t)$ based on the fact that
+Many authors suggest using $\beta(t) = a + b\log(t)$ based on the fact that
 covaratiate effects have often been observed to fade with time;
 however fitting an arbitrary fixed shape without even looking at the data
 is an even worse course choosing a fit based on looking:  
@@ -579,7 +590,7 @@ linear.
 \section{Multi-state analysis}
 \subsection{Data}
 \begin{figure}
-<<nfig1>>=
+<<nfig1, echo=FALSE>>=
 states <- c("No comorbidity", "1 comorbidity", "2 comorbidities", 
             "3 comorbitities", "Death")
 cmat <- matrix(0, 5,5)
@@ -598,14 +609,14 @@ NAFLD is closely linked to obesity and metabolic syndrome,
 and Allen considered
 the occurrence of three dysmetabolic comorbidities --- hypertension,
 dyslipidemia, and diabetes.  
-Analysis was then based on a the 5 state model shown in figure \ref{statefig}.
+Analysis was then based on the 5 state model shown in figure \ref{statefig}.
 Using `0MC', '1MC', etc. as shorthand names for the number of metabolic
-comorbidities, we can define both current state and multi-state outcome
-variables. 
-Note one major difference between current state and outcome: 
-if a piece of a subject's time
+comorbidities, we can define both current state and outcome
+variables for each subject. 
+Note one major difference between current state and outcome, namely that the
+first is a time-dependent variable.
+If a piece of a subject's time
 were divided into multiple sub-intervals, time dependent covariates
-such as the current state
 repeat in each interval.  An endpoint, however, does not repeat.
 The 2MC endpoint is not like a recurrent infection; the subject does
 not get new instances of it.
@@ -646,7 +657,7 @@ their current state, so \code{nfit2a} below is a model for the
 risk of progression to a more severe metabolic state given you are 
 currently in state 0mc. 
 This is essentially a fit under the constraint that the 0:1, 0:2, and 0:3
-hazards have common coefficients, and similarly for the 1:3 and 2:3
+hazards have common coefficients, and similarly for the 1:2 and 1:3
 transitions.
 Such a reduction is necessary for state pairs that have only a small number of
 transitions,
@@ -913,7 +924,8 @@ if (FALSE) {  # individual bars
                     "M NAFLD"),
         legend= TRUE, args.legend=list(x=11, y=28),
         horiz=FALSE, las=1, beside=TRUE,
-        col= c(rainbow(5)[4:1], 'black'), ylab="Expected years in state")
+        col= c(rainbow(5)[4:1], 'black'), 
+        ylab="Expected years in state, starting in 0mc at age 40")
 } else { #stacked bars
     oldpar <- par(mar=c(5.1, 7.1, 2, 2))
     barplot(height= t(rtime2[c(2,1,3,4), 1:4]), space=c(.1),
@@ -1075,7 +1087,7 @@ The overall number of person-years of follow-up in this data is the
 sum of (age2-age1).
 It turns out that \code{data1} has an excess total follow-up of of about 
 \Sexpr{round(excess.pct,1)}\%, so we do not expect the answers to change much.
-The tcount matrix has a few new features: (discussion).
+The tcount matrix has a few new features.
 
 
 After adding in the state variables in the same way as before, the 
@@ -1107,6 +1119,7 @@ nfit4b <- coxph(Surv(age1, age2, endpoint %in% c("2mc", "3mc")) ~
 nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ male + nafld,
                data=data2, subset= (cstate=="2mc"))
 
+# print out a table comparing these models to prior ones
 temp <- cbind(c(coef(nfit1), coef(nfit2a), coef(nfit2b), coef(nfit2c)),
               c(coef(nfit3), coef(nfit4a), coef(nfit4b), coef(nfit4c)))
 temp <- temp[c(2:5, 7,9,11), ]  #only the death coefs
