@@ -12,7 +12,7 @@
 \begin{document}
 <<echo=FALSE>>=
 opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
-               fig.with=5, fig.height=3.5, fig.path="figures/",
+               fig.with=5, fig.height=4, fig.path="figures/",
                out.width="0.9\\textwidth", out.height="!", device="pdf",
                cache=FALSE, background="#FFFFFF", mypar=TRUE,
                warning=FALSE, error=FALSE)
