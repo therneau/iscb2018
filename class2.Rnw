@@ -17,8 +17,10 @@ opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
                cache=FALSE, background="#FFFFFF", mypar=TRUE,
                warning=FALSE, error=FALSE)
 knit_hook$set(mypar = function(before, options, envir) {
-    if (before && options$fig.show!=FALSE) 
-        mar=c(5.1,4.1, .2, .2)  # we will float figures, so no titles
+    # see Xie, Dynamic documents with R and knitr, 10.1.1 and 10.1.4
+    if (before) { 
+        mar=c(4.1,4.1, .2, .2)  # we will float figures, so no titles
+    } else NULL
 })
 
 library(survival, quietly=TRUE)
