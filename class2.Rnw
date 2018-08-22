@@ -16,7 +16,7 @@ opts_chunk$set(comment=NA, tidy=FALSE, highlight=FALSE, echo=TRUE,
                out.width="0.9\\textwidth", out.height="!", device="pdf",
                cache=FALSE, background="#FFFFFF", mypar=TRUE,
                warning=FALSE, error=FALSE)
-knit_hook$set(mypar = function(before, options, envir) {
+knit_hooks$set(mypar = function(before, options, envir) {
     # see Xie, Dynamic documents with R and knitr, 10.1.1 and 10.1.4
     if (before) { 
         mar=c(4.1,4.1, .2, .2)  # we will float figures, so no titles
