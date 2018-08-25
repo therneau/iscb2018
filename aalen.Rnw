@@ -84,15 +84,19 @@ crisk(c("Waiting list", "transplant", "withdraw", "death"))
 \end{frame}
 
 \begin{frame}[fragile]{Aalen-Johansen estimate}
-    \code{survfit(Surv(futime, event) $\sim$ 1, data=transplant)}
+<<tfit0, echo=TRUE, fig.keep="none">>=
+afit <- survfit(Surv(futime, event)~ 1, data=transplant)
+plot(afit, col=1:4)
+@
 
 <<tfit, echo=FALSE>>=
+par(mar=c(7.1, 4.1, .1, .1))
 period <- cut(transplant$year, c(1989, 1992, 1995, 1997, 2000),
               labels=c('1990-92', '1993-95', '1996-97', '1998-99'))
 pfit <- survfit(Surv(futime, event) ~ period, transplant)
 pfit$states[4] <- "waiting"
 plot(pfit[1,1:4], lwd=2, col=1:4, xscale=365.25, 
-     xlab="Years", xmax=730)  # period 1
+     xlab="Years", ylab="Pr(state)", xmax=730)  # period 1
 legend(360, .8, pfit$states, lty=1, lwd=2, col=1:4)
 # The default is not to plot any states that have no name,
 #   adding a name sidesteps this
@@ -253,7 +257,8 @@ R-help (December 2009)
    \item T. Therneau, Multi-state models, R survival package.
    \item J. Beyersmann, A Allignol, M. Schumacher, Competing and multistate
      models in R.
-   \item R. Cook and J. Lawless, Multi-state models. 2018
+   \item R. Cook and J. Lawless, Multi-state models for the analysis of life
+     history data. 2018
  \end{itemize}
 \end{frame}
 
@@ -306,6 +311,8 @@ Then
   \item $p(0)$ = starting distribution, usually $(1, 0, 0, \ldots)$
   \item $p_j(t)$ =  Pr(in state $j$ at time $t$), $\sum_j p_j(t)=1$
   \item $p(t)$ is the Aalen-Johansen estimator
+  \item Many (most) theory books use $dA(t)$ (rows sum to 0) and $I + dA(t)$
+    (rows sum to 1).
 \end{itemize}
 \end{frame}
 
@@ -323,7 +330,7 @@ Then
       estimator.
       \begin{itemize}
         \item Once quite common. 
-        \item Applies to tabulated data (like Graunt's).
+        \item Applies directly to tabulated data (like Graunt's).
         \item Nuisance: how wide should the intervals be?
       \end{itemize}
     \pause
@@ -355,7 +362,7 @@ In the R survival package
 fit <- survfit(Surv(time, status) ~ group, data=mydata)
 \end{Example}
  \begin{itemize}
-   \item If \code{status} is a 0/1 or FALSE/TRUE variable, this gives the
+   \item If \code{status} is a 0/1 or true/false variable, this gives the
    Kaplan-Meier + Greenwood estimate of variance
 
    \item If \code{status} is a categorical variable (factor), this gives the
@@ -378,18 +385,17 @@ fit <- survfit(Surv(time, status) ~ group, data=mydata)
     \item So is the Horvitz-Thompson variance estimate (survey sampling) 
     \item The working independence variance of GEE models \\
      \ldots
-    \item For a 2 state alive-dead model, the IJ estimate = Greewood's estimate
+    \item For a 2 state alive-dead model, the IJ estimate = Greenwood's estimate
        \begin{itemize}
          \item empirically verified for a large number of data sets
-	 \item Proof: Ann Eaton
+	 \item Proof: Anne Eaton
 	 \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}{AJ curves, 2 state model}
 \begin{itemize}
-  \item $p_1(t)$ = fraction still alive \\
-        $p_2(t)$ = fraction who have died 
+  \item $p(t)$ = (fraction still alive, fraction who have died)(t) 
   \item Some disciplines prefer to plot prob(alive), 
     \begin{itemize}
       \item the classic survival curve that starts at 1 and goes down
@@ -410,8 +416,10 @@ fit <- survfit(Surv(time, status) ~ group, data=mydata)
   \item Most people omit Pr(still in the entry state) as it is the least 
     interesting
     \item As a result all the curves go up \pause
-    \item Some users/disciplines/journals are so bothered by this that they
+    \item Some users/disciplines/journals are so bothered 'uphill!' that they
       suggest a plot of $(1-p_1(t))$, $(1- p_2(t))$, etc.
+    \item Imagine a plot of customers in at DFO = (fraction not in the shoe dept,
+      fraction not in the food court, fraction not in toys, \ldots)
 \end{itemize}
 \end{frame}
 
@@ -511,8 +519,8 @@ abline(v=2, lty=2, col=3)
 
 # add the state space diagrams
 par(mar=c(4,.1,1,1))
-crisk(c("Entry","Death", "CR"), alty=3)
-crisk(c("Entry","Death", "Tx"), alty=2)
+crisk(c("Entry", "CR", "Death"), alty=3)
+crisk(c("Entry", "Tx", "Death"), alty=2)
 crisk(c("Entry","Death"))
 par(oldpar)
 @ 
@@ -732,6 +740,8 @@ sfit4$transitions
 \begin{frame}
   \begin{itemize}
     \item Individuals cannot have a ``hole'' in their follow-up time.
+    \item Example: gaps in follow-up
+    \item Individuals may ``skip'' states  
     \item Example: panel data
       \begin{itemize}
         \item Smith enters state 1 at one year
@@ -739,7 +749,6 @@ sfit4$transitions
           but we don't know when he made the transition.
         \item msm package
       \end{itemize}
-    \item Example: gaps in follow-up
   \end{itemize}
 \end{frame}
   

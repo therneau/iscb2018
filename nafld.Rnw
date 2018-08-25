@@ -10,6 +10,8 @@ options(contrasts= c("contr.treatment", "contr.poly"),
 par(mar=c(4.1, 4.1, 1.1, 1.1))
 load("nafld.rda")
 library(hexbin, quietly=TRUE)
+library(mstate)
+table2 <- function(...) table(..., useNA="ifany")
 @ 
 
 \section{Multiple disease states}
@@ -19,18 +21,22 @@ library(hexbin, quietly=TRUE)
 
 \begin{frame}{NAFLD}
   \begin{itemize}
-    \item Allen, Non-alcoholic fatty liver disease incidence and
+    \item A. Allen, Non-alcoholic fatty liver disease incidence and
       impact on metabolic burden and death, a 20 year community study.
       Hepatology 2018, 67:1726--1736.
     \item The prevalence of non-alcoholic fatty liver disease (NASH) has
       risen to 24\%.
-    \item Most common cause of chronic liver disease.
+    \item Now the most common cause of chronic liver disease.
     \item Diagnosed with abdominal MRI.
     \item NASH = NAFLD + inflammation requires biopsy for diagnosis.
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Study}
+<<ncount>>=
+ncount <- table2(sign(nafld1$ntime))
+n2 <- c(ncount[1]+ ncount[2], ncount[2] + ncount[3])
+@ 
   \begin{itemize}
     \item All NAFLD diagnosis from 1997 to 2014 in Olmsted County, Minnesota.
     \item Utilize the Rochester Epidemiology Project
@@ -38,7 +44,8 @@ library(hexbin, quietly=TRUE)
     \item 4 controls matched on age and sex, then followed forward until the
     analysis date. 
     \pause
-    \item 3869 cases of NAFLD and 15522 controls, 313 overlap.
+    \item \Sexpr{n2[1]} cases of NAFLD and \Sexpr{n2[2]} controls, 
+      \Sexpr{ncount[2]} overlap.
   \end{itemize}
 \end{frame}
 
@@ -63,7 +70,7 @@ statefig(cbind(4,1), cmat)
     \item \code{nafld2}: Variables of id, days, test, and value.  Contains
       selected tests and clinical observations.
     \item \code{nafld3}: Variables of id, days, and event type.  One observation
-      for each outcome: occurrence of NASH, of hypertension, diabetes, etc.
+      for each outcome: occurrence of NASH, hypertension, diabetes, etc.
     \item To anonomize patients, all dates have been replaced with ``days
       since first enrollment''.  
   \end{itemize}
@@ -71,7 +78,7 @@ statefig(cbind(4,1), cmat)
 
 \begin{frame}{Data}
   \begin{itemize}
-    \item Comorbidities are diabetes, hypertension, and dyslipidemia
+    \item Metabolic comorbidities are diabetes, hypertension, and dyslipidemia
     \item Focus on a model with 0, 1, 2, 3, of these + death
     \item The real work is in building and checking a data set,
       the fits will be easy.
@@ -95,7 +102,7 @@ arrows(c(5, 15, 21, 26, 31, 70), rep(c(1.4, .6), 3), c(5, 15, 21, 26, 31, 70),
 text(c(5, 15, 21, 26, 31, 70), rep(c(1.5, .5), 3),
      c("early", "within", "gap", "leading", "trailing", "late"))
 @ 
-0\end{frame}
+\end{frame}
 
 \begin{frame}[fragile]{R code}
 <<echo=TRUE, size='scriptsize'>>=
@@ -119,7 +126,7 @@ attr(data1, 'tcount')
 <<row4a, echo=TRUE>>= 
 rowcount <- table(data1$id)
 table(rowcount)    # pick someone with 4 rows
-subset(data1, id == 17, c(id, age, tstart, tstop, nafld,
+subset(data1, id == 135, c(id, age, tstart, tstop, nafld,
                      htn, diab, dyslip, death))
 @
 \end{frame}
@@ -128,7 +135,7 @@ subset(data1, id == 17, c(id, age, tstart, tstop, nafld,
   \begin{itemize}
     \item The first call creates a time window for each subject.
       \begin{itemize}
-        \item For subject 17, this is (0, 4596), ending with death/censored
+        \item For subject 135, this is (0, 5269), ending with censored
         \item More complex time windows are supported.
       \end{itemize}
     \item Each subsequent call, and each term within a call, sequentially
@@ -144,7 +151,7 @@ subset(data1, id == 17, c(id, age, tstart, tstop, nafld,
 
 \begin{frame}[fragile]
 <<row4aa>>=
-subset(nafld3, id==17)
+subset(nafld3, id==135)
 @ 
 \end{frame}
 
@@ -154,7 +161,7 @@ test <- tmerge(nafld1[, 1:2], nafld1, id,
                death = event(futime, status))
 attr(test, "tcount")
 #
-subset(test, id==17)
+subset(test, id==135)
 @ 
 \end{frame}
 
@@ -167,7 +174,7 @@ test <- tmerge(test, subset(nafld3, event=="nafld"), id,
 
 attr(test, "tcount")
 #
-subset(test, id==17)
+subset(test, id==135)
 @ 
 \end{frame}
 
@@ -182,7 +189,7 @@ test <- tmerge(test, subset(nafld3, event=="diabetes"), id,
                 diab= tdc(days), e1= event(days))
 attr(test, "tcount")
 #
-subset(test, id==17)
+subset(test, id==135)
 @ 
 \end{frame}
 
@@ -192,7 +199,7 @@ test <- tmerge(test, subset(nafld3, event=="htn"), id,
                 htn= tdc(days))
 attr(test, "tcount")
 #
-subset(test, id==17)
+subset(test, id==135)
 @ 
 \end{frame}
 
@@ -202,7 +209,7 @@ test <- tmerge(test, subset(nafld3, event=="dyslipidemia"), id,
                 lip= tdc(days), e3= event(days))
 attr(test, "tcount")
 #
-subset(test, id==17)
+subset(test, id==135)
 @ 
 \end{frame}
 
@@ -236,6 +243,7 @@ subset(test, id==17)
   
   \begin{itemize}
     \item Someone \emph{will} die on the same day as their diabetes diagnosis,
+      have first NAFLD and first hypertension on the same day,
       or any number of other overlaps.
     \item Be prepared to think through these cases.  
   \end{itemize}
@@ -276,18 +284,22 @@ with(data1, table(cstate, endpoint))
 
 \begin{frame}{Time scale}
   \begin{itemize}
-    \item Time since diagnosis makes some sense for the NAFLD cases,
-      but time since ``your number was chosen out of a hat'' for the
-      controls?
+    \item Time since diagnosis
       \begin{itemize}
-        \item Age and sex need to be in the model, and they need to be 
-          \emph{right}
+        \item makes some sense for the NAFLD cases
+        \item Time since ``your number was chosen out of a hat'' for the
+          controls?
+        \item Age and sex need to be in the model, and the model for them
+          nees to be \emph{correct}
         \item The population death rate ranges from .03--500 /1000 over
           this age span; a small lack of fit in the age*sex modeling 
           can dominate all other covariates.
       \end{itemize}
-    \item Age as a time scale compares like with like; age is not in
-      model.  We can also stratify on sex if desired.
+    \item Age as a time scale:
+      \begin{itemize}
+        \item Compares like with like.  We can also stratify on sex if desired.
+          \item Age is not a covariate
+      \end{itemize}
     \item Time since index + case-control matching compares each subject
       to others of the same age and sex. 
   \end{itemize}
@@ -295,7 +307,7 @@ with(data1, table(cstate, endpoint))
 
 \begin{frame}{2011 Minnesota death rates}
 <<death>>=
-matplot(20:100, survexp.mn[21:101, ,"2011"]*365000, type='l', lwd=2,
+matplot(20:100, survexp.mn[21:101, ,"2011"]*365000, type='l', lty=1,lwd=2,
         col=2:1, log='y', xlab="Age", ylab= "Deaths/1000")
 @ 
 \end{frame}
@@ -304,17 +316,19 @@ matplot(20:100, survexp.mn[21:101, ,"2011"]*365000, type='l', lwd=2,
 <<mfit1, echo=TRUE, size="small">>=
 nfit1 <- coxph(Surv(age1, age2, death) ~ male + nafld,
                data=data1)
-nfit2 <- coxph(Surv(age1, age2, death) ~ male + nafld + as.numeric(cstate),
+nfit2 <- coxph(Surv(age1, age2, death) ~ male + nafld + 
+                   as.numeric(cstate),
                data=data1)
 nfit3 <- coxph(Surv(age1, age2, death) ~ male + 
-                   strata(cstate)/nafld,  data= data1)
+                  strata(cstate)/nafld,  data= data1)
 nfit4a <- coxph(Surv(age1, age2, endpoint %in% c("1mc", "2mc", "3mc")) ~ 
                       strata(male) + nafld,
                data=data1, subset= (cstate=="0mc"))
 nfit4b <- coxph(Surv(age1, age2, endpoint %in% c("2mc", "3mc")) ~ 
                     strata(male) + nafld,
                data=data1, subset= (cstate== "1mc"))
-nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ strata(male) + nafld,
+nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ 
+                    strata(male) + nafld,
                data=data1, subset= (cstate=="2mc"))
 @ 
 \end{frame}
@@ -324,7 +338,7 @@ nfit4c <- coxph(Surv(age1, age2, endpoint=="3mc") ~ strata(male) + nafld,
 mtable <- matrix(NA, 11, 3)
 dimnames(mtable) <- list(c("Alive -> Dead", "Alive -> Dead", "","0 MC -> Dead", 
                            "1 MC -> Dead", "2 MC -> Dead", "3 MC -> Dead", "",
-                           "0 MC -> 1 MC", "1 MC -> 2 MC", "2 MC -> 3 MC"),
+                           "0 MC -> 1+ MC", "1 MC -> 2+ MC", "2 MC -> 3 MC"),
                          c("male sex", "NAFLD", "mcount"))
 mtable[1, 1:2] <- coef(nfit1)
 mtable[2, 1:3] <- coef(nfit2)
@@ -335,9 +349,68 @@ print(round(exp(mtable), 1), na.print="")
 @ 
   \begin{itemize}
     \item The incremental impact of NAFLD on death decreases
-    \item The impact on conversion to the next comorbid state increases.
+    \item The impact on conversion to the next comorbid state decreases.
     \item (Allen adds these to figure 4.)
   \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Stacked data set}
+Build a transtion matrix.
+<<mstate1>>=
+sname <- c("0mc", "1mc", "2mc", "3mc", "death")
+transitions <- matrix(NA, 5, 5, dimnames= list(from=sname, to=sname))
+transitions[1,2:4] <- 1:3
+transitions[2,3:4] <- 4:5
+transitions[3,4] <- 6
+transitions[1:4, 5] <- 7:10
+print(transitions, na.print='-')
+@ 
+\end{frame}
+
+<<mstate2, echo=FALSE>>=
+stacker <- function(s1, s2, trans) {
+    temp <- subset(data1, as.numeric(cstate) == s1)
+    data.frame(from=s1, to=s2, trans=trans, 
+               status = 1*(as.numeric(temp$endpoint) == s2),
+               temp)
+}
+ntrans <- max(transitions, na.rm=TRUE)
+temp <- vector("list", ntrans)
+for (i in 1:5) {
+    for (j in 1:5) {
+        k <- transitions[i,j]
+        if (!is.na(k)) 
+            temp[[k]] <- stacker(i, j, k)
+    }
+}
+msdata <- do.call(rbind, temp)
+attr(msdata, "trans") <- transitions
+class(msdata) <- c("msdata", "data.frame")
+@ 
+
+
+\begin{frame}[fragile]
+<<mstate2b, echo=TRUE>>=
+# data creation suppressed
+dim(msdata)
+msdata[1:5, 1:7]
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+<<ms2bb>>=  
+events(msdata)$Frequencies
+@
+\end{frame}
+
+\begin{frame}[fragile]{All at once}
+<<mstate2c, echo=TRUE>>=
+msdata$sgrp <- factor(with(msdata, from + 4*(to==5)))
+allfit2 <- coxph(Surv(age1, age2, status) ~ 
+                     sgrp:(nafld + male) + strata(from, to),
+                 data=msdata)
+length(coef(allfit2))
+@ 
 \end{frame}
 
 \begin{frame}{Other summaries}
@@ -348,6 +421,122 @@ print(round(exp(mtable), 1), na.print="")
     \item Number of visits to each state
   \end{itemize}
 \end{frame}
+
+\begin{frame}[fragile]{Aalen-Johansen}
+<<mfig1, echo=TRUE, error=TRUE>>=
+multi <- survfit(Surv(age1, age2, endpoint) ~ nafld, data=data1,
+                istate=cstate, id=id, se=FALSE, start.time=50)
+@ 
+\end{frame}
+
+\begin{frame}[fragile]
+<<mfig2, echo=TRUE>>= 
+data1$nbase <- data1$nafld[match(data1$id, data1$id)]
+multi1 <- survfit(Surv(age1, age2, endpoint) ~ male+ nbase, data=data1,
+                istate=cstate, id=id, se=FALSE, start.time=50)
+print(multi1, digits=2, rmean=100)
+@ 
+\end{frame}
+
+\begin{frame}
+<<mfit2b>>=
+oldpar <- par(mar=c(5.1, 7.1, 2, 2))
+barplot(height= t(rtime[c(2,1,3,4), c(5,1,2,3)]), space=c(.1),
+        names.arg=c("F NAFLD", "F Control", "M Control", 
+                    "M NAFLD"),
+        legend= TRUE, horiz=TRUE, las=1, xlim=c(0,50),
+        col= rainbow(5)[4:1], xlab="Expected years in state")
+par(oldpar)
+@   
+\end{frame}
+
+\begin{frame}[fragile]
+<<mfig2d>>=
+round(multi1$p0[,c(5,1:4)], 2)
+@   
+\end{frame}
+
+\begin{frame}
+<<mfig2c>>=
+plot(multi1, lty=1:2, col=rep(c(3,5,4,1,2), each=2), yscale=100,
+     xlab="Age", ylab="P(state)")
+legend(55, .95, c("0 mc", "1 mc", "2 mc", "3 mc", "Dead"), lty=1, 
+       lwd=2, col=c(2,3,5,4,1))
+@ 
+\end{frame}
+
+\begin{frame}[fragile]{Fool survfit}
+<<mfig2e, echo=TRUE>>= 
+fakeid <- data1$id + data1$nafld/2
+multi2 <- survfit(Surv(age1, age2, endpoint) ~ nafld, data=data1,
+                istate=cstate, id=fakeid, se=FALSE, start.time=50)
+print(multi2, digits=2)
+@ 
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}
+    \item This fit allows someone to jump to another curve mid-stream.
+          
+    \item For simple alive-dead, these curves are equivalent to 
+    Simon and Makuch, Statistics in Medicine, 1984.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Choices}
+  \begin{enumerate}
+    \item Use only baseline values for the fit
+      \begin{itemize}
+        \item Survival given that baseline
+        \item Subjects will evolve, and that gets built into the coefficients
+          and the baseline hazard
+        \item The PH assumption may be badly strained
+      \end{itemize}
+    \item ``Baseline'' values at future times (landmark analysis)
+    \item Use time-dependent covariates for the fit
+      \begin{enumerate}
+        \item Predict for fixed covariates
+        \item Create a fixed covariate path (delicate)
+        \item Joint fits (JM package)
+        \item Use a population average
+        \item Encode the path as states and refit
+      \end{enumerate}
+    \item Various bad ideas
+  \end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Time in state, based on a fitted model}
+  \begin{itemize}
+    \item Simplest method is 3.1: time-dependent fit + prediction for static
+      covariates
+      \begin{enumerate}
+        \item Fit the TD models for each state to state transition
+          (\code{nfit3, nfit4a, nfit4b, nfit4c})
+        \item For each model, get the predicted hazard functions
+          $\lambda_{ij}(t$, control) and $\lambda_{ij}(t$, NAFLD)
+        \item Compute Aalen-Johansen estimates using these values.
+        \item Alternate: use the \code{mstate} package
+      \end{enumerate}
+    \item Better is method 1: time-fixed covariate fit + static prediction
+      \begin{enumerate}
+        \item Only use the baseline nafld value, or create the doubled 
+          data set (full follow-up for controls that become cases)
+        \item Cox model fits for each transition, robust variance if doubled
+        \item Hazard estimates and AJ computation as before
+      \end{enumerate}
+    \item Better is method 3.3: time-dependent fit + population curves
+      \begin{enumerate}
+        \item Fit the TD models
+        \item Predicted hazard curves for \emph{each covariate path} =
+          334 for controls, only 1 for NAFLD; overall hazard for controls is
+          a time-weighted average.
+        \item Use these to compute Aalen-Johansen values
+      \end{enumerate}
+    \item variance - bootstrap
+  \end{itemize}
+\end{frame}
+
 
 \begin{frame}{Predicting the future}
   \begin{itemize}
@@ -412,158 +601,12 @@ lines(pred1, col=6, conf.int=FALSE)
 @ 
 \end{frame}
 
-\begin{frame}{Choices}
-  \begin{enumerate}
-    \item Use only baseline values for the fit
-      \begin{itemize}
-        \item Survival given that baseline
-        \item Subjects will evolve, and that gets built into the coefficients
-          and the baseline hazard
-        \item The PH assumption may be badly strained
-      \end{itemize}
-    \item ``Baseline'' values at future times (landmark analysis)
-    \item Use time-dependent covariates for the fit
-      \begin{enumerate}
-        \item Predict for fixed covariates
-        \item Create a covariate path (delicate)
-        \item Use a population average
-        \item Encode the path as states and refit
-      \end{enumerate}
-    \item Various bad ideas
-  \end{enumerate}
-\end{frame}
-
-\begin{frame}[fragile]{Aalen-Johansen}
-<<mfig1, echo=TRUE, error=TRUE>>=
-multi <- survfit(Surv(age1, age2, endpoint) ~ nafld, data=data1,
-                istate=cstate, id=id, se=FALSE, start.time=50)
-@ 
-\end{frame}
-
-\begin{frame}[fragile]
-<<mfig2, echo=TRUE>>= 
-fakeid <- data1$id + data1$nafld/2
-multi <- survfit(Surv(age1, age2, endpoint) ~ nafld, data=data1,
-                istate=cstate, id=fakeid, se=FALSE, start.time=50)
-print(multi, digits=2)
-@ 
-\end{frame}
-
-\begin{frame}
-<<mfig3>>=
-plot(multi, lty=1:2, col=rep(c(3,5,4,1,2), each=2), yscale=100,
-     xlab="Age", ylab="P(state)")
-legend(55, .95, c("0 mc", "1 mc", "2 mc", "3 mc", "Dead"), lty=1, 
-       lwd=2, col=c(2,3,5,4,1))
-@ 
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item This is the non-parametric form of 3.1, prediction for a control
-    subject who does not switch from control to NAFLD. 
-    
-    \item For simple alive-dead, these curves are equivalent to 
-    Simon and Makuch, Statistics in Medicine, 1984.
-  \end{itemize}
-\end{frame}
-
-
-\begin{frame}{Method 1, baseline covariates}
-  \begin{itemize}
-    \item NAFLD subjects never(?) become non-NAFLD
-    \item Control subjects need to have full follow-up
-      \begin{itemize}
-        \item Duplicate the joint NAFLD/control subjects
-        \item \Sexpr{sum(nafld1$ntime > 0, na.rm=T)} out of \Sexpr{sum(nafld1$nafld)} cases
-        \item The NAFLD copy starts later 
-        \item AJ estimate: copy 2 needs a new id
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<data2,>>=
-data2 <- data1
-data2$nafld <- data2$nafld[match(data2$id, data2$id)]  # no time dependent
-tdata <- subset(data1, nafld==1 & ntime>0)
-tdata$id <- tdata$id + .1
-data2 <- rbind(data2, tdata)
-
-mfig2 <- survfit(Surv(age1, age2, endpoint) ~ nafld, data=data2,
-                istate=cstate, id=id, se=FALSE, start.time=50)
-
-tmat <- matrix(summary(multi, rtime=100)$table[, "rmean"], 2, 5)
-temp <- matrix(summary(mfig2, rtime=100)$table[, "rmean"], 2, 5)
-tmat2 <- rbind(Control2 = temp[1,], Std=tmat[1,])
-t2 <- tmat2[,c(5,1,2,3)]
-t2 <- cbind(t2, Total =rowSums(t2))
-colnames(t2) <- c("0mc", "1mc", "2mc", "3mc", "Total")
-round(t2, 1)
-
-i1 <- sum(nafld1$ntime > 0, na.rm=T) 
-i2 <- table(nafld1$nafld)
-@ 
-
-\begin{itemize}
-  \item \Sexpr{i1} out of \Sexpr{i2[1]} controls get a little more follow-up
-  \item During that extra follow-up they are at higher risk
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Time in state, based on the fitted model}
-  \begin{itemize}
-    \item Simplest method is 3.1: time-dependent fit + prediction for static
-      covariates
-      \begin{enumerate}
-        \item Fit the TD models for each state to state transition
-          (\code{nfit3, nfit4a, nfit4b, nfit4c})
-        \item For each model, get the predicted hazard functions
-          $\lambda_{ij}(t$, control) and $\lambda_{ij}(t$, NAFLD)
-        \item Compute Aalen-Johansen estimates using these values.
-        \item Alternate: use the \code{mstate} package
-      \end{enumerate}
-    \item Better is method 1: time-fixed covariate fit + static prediction
-      \begin{enumerate}
-        \item Only use the baseline nafld value, or create the doubled 
-          data set (full follow-up for controls that become cases)
-        \item Cox model fits for each transition, robust variance if doubled
-        \item Hazard estimates and AJ computation as before
-      \end{enumerate}
-    \item Better is method 3.3: time-dependent fit + population curves
-      \begin{enumerate}
-        \item Fit the TD models
-        \item Predicted hazard curves for \emph{each covariate path} =
-          334 for controls, only 1 for NAFLD; overall hazard for controls is
-          a time-weighted average.
-        \item Use these to compute Aalen-Johansen values
-      \end{enumerate}
-    \item variance - bootstrap
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{Method 1}
-<<mfit4, echo=TRUE>>=
-# method 1
-tdata <- data1
-tdata$nafld <- tdata$nafld[match(tdata$id, tdata$id)]  
-agfit1 <- survfit(Surv(age1, age2, endpoint) ~ male + nafld, tdata,
-                  id= id, istate= cstate, start.time=50)
-dim(agfit1)
-# plot(agfit1[1:2,-4], lty=1:2, col=rep(1:5, each=2))
-rtime <- summary(agfit1, rtime=100)$table[,3]
-rtime <- matrix(rtime, nrow(agfit1), ncol(agfit1))
-@ 
-\end{frame}
-
-\begin{frame}
-<<mfit4a>>=
-oldpar <- par(mar=c(5.1, 7.1, 1, 1))
-barplot(height= t(rtime[c(2,1,3,4), c(5,1,2,3)]), space=c(.1, .1, .3, .1),
-        names.arg=c("F NAFLD", "F Control", "M Control", 
-                    "M NAFLD"),
-        legend= TRUE, horiz=TRUE, las=1,
-        col= rainbow(5)[4:1], xlab="Years")
-par(oldpar)
+\begin{frame}{Using mstate}
+<<mstate2d>>=
+pdata <- expand.grid(nafld=0:1, male=0:1, strata=1:10)
+pdata$sgrp <- factor(c(1,1,1,4, 2,2,5, 3,6,7)[pdata$strata])
+attr(pdata, "trans") <- transitions
+class(pdata) <- c("msdata", "data.frame")
+mhaz <- msfit(allfit2, newdata=pdata, trans=transitions)
 @ 
 \end{frame}

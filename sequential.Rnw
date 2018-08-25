@@ -23,7 +23,7 @@ par(mar=c(4.1, 4.1, 1.1, 1.1))
         \item Sequential events
           \begin{itemize}
             \item Recurrent bladder cancer
-            \item Repeated infections in children with chronic granulomatis
+            \item Repeated infections in children with chronic granulomatous
              disease
            \item rhDNase for the treatment of cystic fibrosis
            \item Failure of kidney catheters
@@ -51,6 +51,21 @@ par(mar=c(4.1, 4.1, 1.1, 1.1))
       \end{itemize}
     \item Data setup: stacked 
     \item Analysis: robust variance
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Stacked data sets}
+  \begin{itemize}
+    \item Diabetic retinopathy
+     \begin{itemize}
+       \item 2n observations
+       \item Data set for the right eye, status of 0/1
+       \item Data set for the left eye
+     \end{itemize}
+   \item Parallel failures after UCDA
+     \item 7 endpoints
+     \item 7n observations
+  \end{itemize}
   \end{itemize}
 \end{frame}
 
