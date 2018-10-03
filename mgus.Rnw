@@ -56,7 +56,7 @@ par(oldpar)
 \begin{frame}{Monoclonal Gammopathy of Undetermined Significance (MGUS)}
   \begin{itemize}
     \item Subjects with a dominant clone in their plasma cell population,
-      but without malignancy ($\ge 2$\% of plasma cells).  
+      but without malignancy ($\ge 2$\% of plasma cells in the clone).  
     \item Normally found incidentally to other tests.
     \item Should the patient be worried?
     \item About 1\% per year convert to overt malignancy.
@@ -138,8 +138,8 @@ lines(mfit1, col=1:2, lwd=2)
 
 \begin{frame}{Competing Risks}
   \begin{itemize}
-    \item For this model we are only interested in the first event for each
-      subject.
+    \item For this illustration we are only interested in the first 
+      event for each subject.
     \item Formally we are treating progression to a plasma cell malignancy (PCM)
       as an \emph{absorbing state}, i.e., one
       that subjects never exit.
@@ -149,7 +149,7 @@ lines(mfit1, col=1:2, lwd=2)
       for those whose follow-up terminated without reaching either endpoint.
       Codes for the remaining states can be in any order. The labels are
       arbitrary.
-    \item A simple print of the \code{pfit} object shows the order in
+    \item A simple print of the \code{mfit2} object shows the order in
       which the curves will be displayed.  This information was used to
       choose the line types and colors for the curves.
     \item Curves start at 0.
@@ -188,7 +188,7 @@ print(mfit2, rmean=240, scale=12)
 \end{frame}
 
 \begin{frame}{Footnote: Alternate model}
-<<cr2>>=
+<<cralt>>=
 par(mfrow=c(1,2), mar=c(5.1, 4.1, 1,1))
 crisk(c("MGUS", "PCM", "Death"))
 state3(c("MGUS", "PCM", "Death"))
@@ -264,7 +264,7 @@ bigm   <- mgus2$mspike > 1
 pfit2 <- survfit(Surv(etime, event) ~ oldage + sex + 
                  bigm, data= mgus2)
 
-plot(pfit2, col=1:8, lty=rep(1:2, each=8), mark.time=FALSE,
+plot(pfit2, col=1:8, lty=rep(1:2, each=8),
      xscale=12, xlab="Years since MGUS")
 @ 
 \end{frame}
@@ -297,11 +297,13 @@ plot(pfit2, col=1:8, lty=rep(1:2, each=8), mark.time=FALSE,
 
 \begin{frame}[fragile]
 <<cmugus1, echo=TRUE>>=
-cfit1 <- coxph(Surv(etime, event=="death") ~ sex + mspike, mgus2)
-round(summary(cfit1)$coef, 2)
+cfit1 <- coxph(Surv(etime, event=="death") ~ sex + age +mspike,
+               data= mgus2)
+round(summary(cfit1, scale=c(1, 10, 1))$coef, 2)
 
-cfit2 <- coxph(Surv(etime, event=="PCM") ~ sex + mspike, mgus2)
-round(summary(cfit2)$coef, 2)
+cfit2 <- coxph(Surv(etime, event=="pcm") ~ sex + age + mspike,
+               data= mgus2)
+round(summary(cfit2, scale=c(1, 10, 1))$coef, 2)
 
 quantile(mgus2$mspike, na.rm=TRUE)
 @ 
@@ -351,8 +353,8 @@ lifeleft <- colSums(efit1$surv)/2  # area under the curve
         \item Sex has no effect on progression to PCM.
         \item But females have a higher 15 year risk (9.5 vs 7.5) \pause
         \item Mean life remaining for this age distribution is 
-          \Sexpr{round(lifeleft[1],1)} and \Sexpr{round(lifeleft[2],1)},
-          respectively.
+          \Sexpr{round(lifeleft[1],1)} and \Sexpr{round(lifeleft[2],1)}
+          years, respectively.
       \end{itemize}
   \end{itemize}
 \end{frame}
@@ -389,11 +391,16 @@ legend(0, .18, c("PCM, incorrect curve", "PCM, competing risk"),
       \item Decision: male/female by age 60/80, with mspike= 1.2
       \item Create a 4 observation data set \code{newdata}
        \pause
-     \item Individual curves, from each Cox model alone, are useless;
-          proper curves require \emph{all} the rates.
-     \item Aalen-Johansen estimator, with $\lambda(t | z)$ as entries.
-       \item Result is 8 curves: predicted lifetime risk of PCM and of
-         death before PCM, each for m/f  at age 60/80.
+     \item Individual hazard, from each Cox model alone, are building
+          blocks
+          \begin{itemize}
+            \item Aalen-Johansen estimator, with $\lambda(t | z)$ as entries.
+              \item Requires \emph{all} the fits at once
+              \item Result is 8 curves: predicted lifetime risk of PCM and of
+                death before PCM, each for m/f  at age 60/80.
+          \end{itemize}
+        \item Individual ``predicted survival from Cox model'' curves are
+          useless.
     \end{itemize}
   \end{itemize} 
 \end{frame}
@@ -415,11 +422,16 @@ legend(0, .18, c("PCM, incorrect curve", "PCM, competing risk"),
 
 \begin{frame}
 <<mfit4, echo=FALSE>>=
+cfit3 <- coxph(Surv(etime, event=="death") ~ sex + age + mspike, mgus2)
+cfit4 <- coxph(Surv(etime, event=="pcm") ~ sex + age + mspike, mgus2)
+
 newdata <- expand.grid(sex=c("F", "M"), age=c(60, 80), mspike=1.2)
 
-temp <- matrix(list(), 3,3)
-temp[1,2] <- list(survfit(cfit1, newdata, std.err=FALSE))
-temp[1,3] <- list(survfit(cfit2, newdata, std.err=FALSE))
+tstate <- c("entry", "pcm", "death")
+temp <- matrix(list(), 3,3,
+               dimnames=list(from=tstate, to=tstate))
+temp[1,2] <- list(survfit(cfit4, newdata, std.err=FALSE))
+temp[1,3] <- list(survfit(cfit3, newdata, std.err=FALSE))
 csurv  <- survfit(temp, p0 =c(entry=1, PCM=0, death=0))
 plot(csurv[,2], xmax=25*12, xscale=12, 
      xlab="Years after MGUS diagnosis", ylab="PCM",

@@ -55,12 +55,12 @@ Surv(test$time, test$status)
         \item Won't be seen again.
        \end{itemize}
       \pause
-       \item Multi-state models
+       \item Counting process view
        	 \begin{itemize}
 	  \item Subjects go from state to state
-      	  \item Some have many transitions
-       	  \item Some have zero
-       	  \item There is no ``incomplete'' data.
+      	  \item Some may have many transitions
+       	  \item Some may have zero
+       	  \item There is no ``incomplete'' data
           \item Much easier to think about multiple events
          \end{itemize}
     \end{itemize}	
@@ -135,7 +135,7 @@ par(oldpar)
        \begin{itemize}
            \item $(N(t), Y(t))$ and $X(t)$ or $Z(t)$ 
            \item $N_{ij}(t)$ = number of events so far, subject $i$, event type $j$\\
-               $Y_{ij}(t)$ = 1 if subject is at risk for event type $j$ at time $t$
+               $Y_{ij}(t)$ = 1 if subject $i$ is at risk for event type $j$ at time $t$
        \end{itemize}
   \end{itemize}
 \end{frame}
@@ -168,20 +168,23 @@ par(oldpar)
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Mayo Clinic Study of Aging}
+\begin{frame}
 <<shift1>>=
 oldpar <- par(mfrow=c(2,2), mar=c(5.1, 4.1, 1.1, 1.1))
-xx <- seq(0, 10, length=100)
+xx <- seq(0, 10, length=100)[-1]
 yy <- cbind(dnorm(xx, 4,1), dnorm(xx, 5,1))
 matplot(xx, yy, type='l', lwd=2, lty=1, xlab='x', ylab="density")
 y2 <- cbind(pnorm(xx, 4, 1, lower=FALSE), pnorm(xx, 5, 1, lower=FALSE))
 matplot(xx, y2, type='l', lwd=2, lty=1, xlab='x', ylab="Survival")
 
-y3 <- cbind(dlnorm(xx, 1, 1)/plnorm(xx, 1, 1, lower=FALSE),
-            dlnorm(xx, 1.5, 1)/ plnorm(xx, 1.5, 1, lower=FALSE))
-matplot(xx, y3, type='l', lwd=2, lty=1, log='y', 
-        xlim=c(.5, 10), xlab='x', ylab="Hazard")
-y4 <- cbind(plnorm(xx, 1, 1, lower=FALSE), plnorm(xx, 1.5, 1, lower=FALSE))
+shape <- .9
+y3 <- cbind(dweibull(xx, shape, 8)/pweibull(xx, shape, 8, lower=FALSE),
+            dweibull(xx, shape, 11)/pweibull(xx, shape, 11, lower=FALSE))
+#y3 <- cbind(dweibull(xx, shape, 8), dweibull(xx, shape, 11))
+matplot(xx[-1], y3[-1,], type='l', lwd=2, lty=1,
+        xlab='x', ylab="Hazard", ylim=c(0, max(y3[is.finite(y3)])))
+y4 <- cbind(pweibull(xx, shape, 8, lower=FALSE),  
+            pweibull(xx, shape, 11, lower=FALSE))
 matplot(xx, y4, type='l', lwd=2, lty=1, xlab='x', ylab="Survival")
 par(oldpar)
 @ 
@@ -196,6 +199,10 @@ par(oldpar)
         \begin{itemize}
           \item One outcome dominates all others.
           \item Through the early 1990s these were the problems I saw.
+            \begin{itemize}
+              \item Stage 3 lung cancer
+              \item Survival after MI
+            \end{itemize}
             \pause
           \item Not anymore
         \end{itemize}
@@ -205,7 +212,7 @@ par(oldpar)
   \end{itemize}
 \end{frame}
 
-\begin{frame}
+\begin{frame}{Mayo Clinic Study of Aging}
 <<dementia>>=
 oldpar <- par(mfrow=c(1,2), mar=c(1.1, 1.1, 1.1, 1.1))
 states <- c("Cognitively\nnormal", "Mild\nCognitive\nImpairment", 
@@ -234,9 +241,12 @@ par(oldpar)
 	 \item People who drop out because they are about to fail \\
 	     MDPIT trial (Oakes, JASA 1993; 88:44-49)
 	 \item Only those who are sick respond to queries.
+         \item Availability of nursing home beds.
 	 \pause
-	 \item The fact that someone dropped out allows you to better guess
-	 their death rate.
+	 \item If the fact that someone dropped out allows you to better guess
+	 their death rate, over an above covariates, this is informative
+         censoring.
+         \item Redistribute-to-the-right algorithm
      \end{itemize}
   \end{itemize}
 \end{frame}

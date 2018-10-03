@@ -38,6 +38,24 @@ event <- factor(event, 0:2,
   {\Large Fine-Gray model}
 \end{frame}
 
+\begin{frame}{Fine-Gray model}
+  \begin{itemize}
+    \item Lament (wrt hazard models)
+      \begin{itemize}
+        \item``It's too hard!''
+        \item ``I only want the overall effect'' 
+        \item  ``What's the p-value?'' 
+        \item ``I want my hazard ratios back''
+      \end{itemize}
+    \item Solution: Pretend it's simple
+      \begin{itemize}
+        \item Turn the problem into a set of two-state
+          survival problems
+        \item Solve each separately
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Problem}
 \begin{quote}
   We have met the enemy and he is us.  Pogo
@@ -48,30 +66,14 @@ event <- factor(event, 0:2,
   \item Reality is rarely so simple
   \item Usual approach is to close our eyes and pretend
     \begin{itemize}
-        \item additivity (one value, whatever the other covariates are)
-	\item proportional hazards (one value, for all time)
+        \item linear model: $E(y) = \beta_0 + \beta_1x_1 + \ldots$
+        \item logistic: $E(y) = f\left(\beta_0 + \beta_1x_1 + \ldots\right)$
+        \item Cox: $\log(\lambda(t)) = \beta_0(t) +  \beta_1x_1 + \ldots$
     \end{itemize}
   \item This is much harder with multi-state data.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Fine-Gray model}
-  \begin{itemize}
-    \item Lament: 
-      \begin{itemize}
-        \item``It's too hard!''
-        \item ``I only want the overall effect'' 
-        \item  ``What's the p-value?'' 
-        \item ``I want my hazard ratios back''
-      \end{itemize}
-    \item Solution: Pretend it's simple
-      \begin{itemize}
-        \item Turn the problem into a set of ordinary
-          survival problems
-        \item Solve each separately
-      \end{itemize}
-  \end{itemize}
-\end{frame}
 
 \begin{frame}
 <<FGfig>>=
@@ -83,21 +85,6 @@ crisk(c("MGUS/\nPCM", "Death"))
 par(oldpar)
 layout(1)
 @ 
-\end{frame}
-
-\begin{frame}{Fine-Gray model}
-\begin{itemize}
-  \item In the prior fits we have simple models for $\lambda_{12}$=
-    entry to PCM and $\lambda_{13}$= entry to death.
-  \item (Simple in the sense of covariate effects.)
-  \item $p(t) = exp(H)$ is not simple
-  \item Could we perchance find a simple relationship for 
-    \begin{itemize}
-      \item $p(t)$ \qquad (no, due to 0--1 bounds)
-      \item slope of $p(t)$ \qquad (no, has to integrate to 1)
-      \item slope of $\log(1-p(t))$ \qquad (maybe, but it's odd)
-    \end{itemize}
-\end{itemize}
 \end{frame}
 
 \begin{frame}{Cox model}
@@ -114,18 +101,32 @@ layout(1)
          &= p_1(t)
   \end{align*}
  where state 1 is the entry state. 
- It is somewhat odd that there are simple expressions for the instantaneous
+ It is somewhat odd that there are simple expressions for the 
  hazard
  of an \emph{having} an event at $t$ and the cumulative probability of 
  \emph{not having} that event by time $t$.
 \end{frame}
 
-\begin{frame}{Fine-Gray}
+
+\begin{frame}{Fine-Gray model}
+  Rewrite as
+  \begin{align*}
+    e^{-\Lambda(t)} &= S(t)\\
+     & 1-p_2(t) \\
+    \log(-\log(1-p_2(t))) &= B_0(t) + \beta_1 x_1 + \ldots \\
+    B_0(t) &= \int_0^t \beta_0(s)ds
+  \end{align*}
+
+Looks like complimentary log-log regression
+ 
+\end{frame}
+
+ \begin{frame}{Fine-Gray}
   Ordinary Cox
 $$ 1-p_2(t) = p_1(t) = \exp\left[-\int_0^t\Lambda_0(t) \exp(X\beta) \right]$$
 The Fine-Gray model assumes that
  \begin{align*}
-   1 - p_j(t)  &= \mbox{P(has not yet had event type $j$} \\
+   1 - p_j(t)  &= \mbox{P(has not yet had event type $j$)} \\
                &=  \exp\left[-\int_0^t\Psi_0(t) \exp(X\beta) \right]
    \end{align*}
  where $\Psi$ is the cumulative ``sub-distribution hazard''.
@@ -145,10 +146,11 @@ mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2)
 
 oldpar <- par(mar=c(5.1, 4.1, 1,.1))
 layout(matrix(1:2,1,2), widths=2:1)
-plot(mfit2, col=c(1,2,1,2), lty=c(2,2,1,1),
-     mark.time=FALSE, lwd=2,  xscale=12,
-     xlab="Years post diagnosis", ylab="Probability in State")
-legend(170, .5, c("death w/o PCM:f", "death w/o PCM:m", 
+plot(mfit2, col=c(1,2,1,2), lty=c(2,2,1,1), fun='cloglog',
+     lwd=2, 
+     xlab="Months post diagnosis", 
+     ylab="log(-log(p))")
+legend(1, 0, c("death w/o PCM:f", "death w/o PCM:m", 
                   "PCM:female", "PCM:male"), 
        col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
 
@@ -158,104 +160,6 @@ layout(1)
 @ 
 \end{frame}
 
-\begin{frame}[fragile]
-<<mgus2b, echo=TRUE>>=
-mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2)
-print(mfit2, rmean=240, scale=12)
-
-with(mgus2, table(event, sex))
-@ 
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Event rates}
-<<mgu2sb, echo=TRUE>>=
-pfit <- pyears(Surv(ptime, pstat) ~ sex, scale=12*100, 
-                 data=mgus2)
-pfit$event/pfit$pyears
-@ 
-\begin{itemize}
-  \item Overall rate is 1\% per year for males, 1.1\% for females
-  \item In 15 years we would expect 15\% to progress
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-<<cmugus1, echo=TRUE>>=
-cfit1 <- coxph(Surv(ptime, pstat) ~ age + sex + mspike, mgus2)
-round(summary(cfit1)$conf.int, 2)
-
-quantile(mgus2$mspike, na.rm=TRUE)
-
-cfit2 <- coxph(Surv(futime, death) ~ age + sex + mspike, mgus2)
-round(summary(cfit2)$conf.int, 2)
-@ 
-\end{frame}
-
-\begin{frame}
-\begin{itemize}
-  \item Sex has no impact on the rate of progression to PCM \\
-    but a major impact on death (22\% increase)
-  \item Size of the original monoclonal has a large effect
-    on PCM \\
-    but almost no impact on death rates
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Progression to PCM}
-<<mgus2d>>=
-plot(mfit2[,1],  col=c(1,2), xmax=15*12, 
-     mark.time=FALSE, lwd=2,  xscale=12,
-     xlab="Years post diagnosis", ylab="Progression to PCM")
-legend(96, .03, c("Female", "Male"), lty=1, col=1:2, lwd=2,
-       bty='n')
-@ 
-\end{frame}
-
-<<expect, echo=FALSE>>=
-# mean years of life remaining, used in lines below, but not shown
-efit1 <- survexp(~ sex, data=mgus2, times=365.25*(0:150)/2,
-                 rmap=list(sex=sex, age=age*365.25, year=as.Date("1980-01-01")),
-                 ratetable=survexp.mn)
-lifeleft <- colSums(efit1$surv)/2  # area under the curve
-@ 
-
-\begin{frame}{Lesson 1}
-  \begin{itemize}
-    \item Any given rate (arrow) is modeled using that endpoint and
-      ignoring all others (treat them as censored).  Individual rates
-      are local.
-    \item The probability of being in any one state (box) depends on \emph{all}
-      the rates.  States are global.
-      \begin{itemize}
-        \item Sex has no effect on progression to PCM.
-        \item But females have a higher 15 year risk (9.5 vs 7.5) \pause
-        \item Mean life remaining for this age distribution is 
-          \Sexpr{round(lifeleft[1],1)} and \Sexpr{round(lifeleft[2],1)},
-          respectively.
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \begin{itemize}
-    \item Underlying biology question: does gender affect the rate of
-      progression?
-    \item Public health question: does gender affect the lifetime risk?
-    \item They have different answers.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-<<mgus3>>=
-plot(mfit2, fun=function(x) x, col=1:2, xscale=12, lty=c(1,1,2,2), lwd=2,
-     xlab="Years from MGUS diagnosis", ylab="?")
-legend(15*12, .8, c("Female, not yet PCM", "Male, not yet PCM",
-                    "Female, not yet 'died before PCM'",
-                    "Male, not yet 'died before PCM'"), 
-       lty=c(1,1,2,2), col=1:2, lwd=2, bty='n')
-@ 
-\end{frame}
 
 \begin{frame}{Computation}
   \begin{itemize}
@@ -296,6 +200,11 @@ fgfit1 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
       & \multicolumn{2}{c}{Hazard ratio} \\
       & age (decades) & sex (M) & serum M-spike \\  \hline
 <<fg2, echo=FALSE, results="asis">>=
+# these were fit in the mgus section, reprise them
+cfit1 <- coxph(Surv(etime, event=="pcm") ~ age + sex+ mspike, 
+               data= mgus2)
+cfit2 <- coxph(Surv(etime, event=="death") ~ age + sex+ mspike, 
+               data= mgus2)
 fdata2 <- finegray(Surv(etime, event) ~ ., 
                    etype = "death", data= mgus2)
 fgfit2 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
@@ -330,11 +239,6 @@ legend(1, .15, c("Female, 60", "Male, 60","Female: 80", "Male, 80"),
 
 \begin{frame}
 <<fg4>>=
-# these were fit in the mgus section, reprise them
-cfit1 <- coxph(Surv(etime, event=="pcm") ~ age + sex+ mspike, 
-               data= mgus2)
-cfit2 <- coxph(Surv(etime, event=="death") ~ age + sex+ mspike, 
-               data= mgus2)
 temp <- matrix(list(), 3,3)
 temp[1,2] <- list(survfit(cfit1, newdata, std.err=FALSE))
 temp[1,3] <- list(survfit(cfit2, newdata, std.err=FALSE))
@@ -560,6 +464,7 @@ legend(1, .2, c("F 60", "M 60", "F 80", "M 80"), lwd=2, lty=1, col=1:4, bty='n')
       \begin{itemize}
         \item Failure of PH on this scale
         \item Particularly with long follow-up
+        \item Does not extend to other multi-state models
       \end{itemize}
       
     \item Wrong interpretation
@@ -578,10 +483,25 @@ legend(1, .2, c("F 60", "M 60", "F 80", "M 80"), lwd=2, lty=1, col=1:4, bty='n')
         \item There is no obvious biological story that will act this
           way. 
       \end{itemize}
+      \pause
+      \item However
+        \begin{itemize}
+          \item If the fraction with no endpoint is $>80$\% the fit
+            will often be ``okay''
+        \end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Survival of the FG model?}
+  \begin{itemize}
+    \item Has a 18 year lead on using a rate model + $p(t)$
+    \item It takes us 20 years for statisticians to catch on
+    \item In the mind of many researchers FG is \emph{the} way to deal
+      with CR.
+    \item FG is in R, Stata, and even SAS
+  \end{itemize}
+  \pause
+  
     Overall, SAS is about 11 years behind R and S-Plus in statistical 
     capabilities
  (last year it was about 10 years behind) in my estimation.

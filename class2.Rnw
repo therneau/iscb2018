@@ -1020,7 +1020,8 @@ a set of rows for each of the transitions and needs to be of the
 \code{msdata} class.
 
 <<mstate4>>=
-pdata <- expand.grid(nafld=0:1, male=0:1, trans2=c(1,1,1,2,2,6:10),
+temp <- msdata[match(1:10, msdata$trans), c('trans', '
+pdata <- expand.grid(nafld=0:1, male=0:1, trans=1:10,
                      trans= c(1,1,1,2,2,6:10))
 attr(pdata, "trans") <- transitions
 class(pdata) <- c("msdata", "data.frame")
