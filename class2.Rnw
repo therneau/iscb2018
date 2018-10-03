@@ -1020,13 +1020,13 @@ a set of rows for each of the transitions and needs to be of the
 \code{msdata} class.
 
 <<mstate4>>=
-temp <- msdata[match(1:10, msdata$trans), c('trans', '
+temp <- msdata[match(1:10, msdata$trans), c('trans', 'male', 'nafld', 'trans2')]
 pdata <- expand.grid(nafld=0:1, male=0:1, trans=1:10,
                      trans= c(1,1,1,2,2,6:10))
 attr(pdata, "trans") <- transitions
 class(pdata) <- c("msdata", "data.frame")
 
-# there is a problem with mhaz, the next line fails
+# there is a problem with my mhaz call, not yet addressed: the next line fails
 #mhaz <- msfit(mcox, newdata=pdata, trans=transitions)
 @ 
 

@@ -20,9 +20,9 @@ Some details
     * I have written a statistical textbook.
     * Once you have learned Latex, it is an easy and powerful for knitr documents.
     * Nevertheless, I tell newcomers to learn markdown instead.  It is _almost_ as good and much, much simpler.
-    * The provided code is still easy to read, but I recognize that markedown would have been marginally better for you, the users.  My apologies.
+    * The provided code is still easy to read, but I recognize that markedown would have been better for you, the users.  My apologies.
 
 ## Duration
 
-This site will stay up for a few weeks after the course, but the material is by its very nature ephemeral.  I aim to use slides as an aid and not as content: most of what I will say is not there.  This makes them less useful as standalone material.
+This site will stay up for a few months after the course, but the material is by its very nature ephemeral.  I aim to use slides as an aid and not as content: most of what I will say is not there.  This makes them less useful as standalone material.
 
