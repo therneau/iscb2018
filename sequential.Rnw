@@ -63,9 +63,10 @@ par(mar=c(4.1, 4.1, 1.1, 1.1))
        \item Data set for the left eye
      \end{itemize}
    \item Parallel failures after UCDA
-     \item 7 endpoints
-     \item 7n observations
-  \end{itemize}
+     \begin{itemize}
+       \item 7 endpoints
+       \item 7n observations
+     \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -115,7 +116,7 @@ coxph(Surv(time, status) ~ trt + juvenile + cluster(id), diabetic)
 
 \begin{frame}[fragile]{cgd}
 <<cgd1>>= 
-cgd[1:13, c('id', 'treat', 'age', 'sex', 'tstart', 'tstop', 'status')]
+cgd[1:13, c('id', 'treat', 'age', 'tstart', 'tstop', 'status')]
 coxph(Surv(tstart, tstop, status) ~ treat + age + 
       steroids + cluster(id), cgd)
 @

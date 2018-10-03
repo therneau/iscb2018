@@ -184,62 +184,6 @@ abline(-15/12, 15/12, col=2, lwd=2)
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Hidden Markov Model}
-  \begin{itemize}
-    \item  The data consists of time, outcomes and covariates
-      \begin{itemize}
-        \item The state is not observed directly, rather we see one or
-          more outcomes that depend on the underlying state.
-        \item No need for (time1, time2, endpoint) notation
-        \item Data will have missing values, e.g., covariates on the day
-          of death
-      \end{itemize}
-    \item Same box and arrow model for the states, covariates connect to
-      $\lambda$ as before
-    \item Another set of parameters for the arrows that connect state to outcome
-    \item Allows for more episodic data.
-    \item Much of the software is special purpose.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-<<model1cc>>=
-oldpar <- par(mar=c(2.1, 2.1, 2.1, 2.1))
-s2 <- c("A0", "A1", paste0("N", 0:2), "T0", "T1")
-c2 <- matrix(0, 7, 7, dimnames=list(s2, s2))
-c2[1,2] <- c2[3,4] <- c2[4,5] <- c2[6,7]<- 1
-statefig(matrix(c(2,3,2), ncol=1), c2, cex=1)
-par(oldpar)
-@ 
-\end{frame}
- 
-\begin{frame}
-  \begin{itemize}
-    \item log(measured amyloid binding) $ \sim N(A^-/A^+, \sigma)$
-    \item global memory score $\sim N(\mu, \tau)$ \\
-      $\mu = \beta_0 + \beta_1N + \beta_2\mbox{sex} + \beta_3\mbox{education}$
-    \item $A^-:A^+$ rate depends on APOE status, but on gender
-    \item $N$ transition rates depend on $A$ but not vice-versa
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{HMM}
-  \begin{itemize}
-    \item Very powerful concept
-    \item Downsides
-      \begin{itemize}
-        \item Easy to get carried away
-        \item Computation is \emph{much} harder than a Cox model
-          \begin{itemize}
-            \item good starting estimates
-            \item compute cluster
-            \item patience
-          \end{itemize}
-        \item Few model checking methods
-        \item Long manual
-      \end{itemize}
-  \end{itemize}
-\end{frame}
   
 \begin{frame}
   \myfig{rate1}
@@ -280,6 +224,75 @@ par(oldpar)
           \item What is the average duration of time spent in N2?
           \item What is the predicted fraction who go down each path?
         \item What is the impact of a change in one rate?
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hidden Markov Model}
+  \begin{itemize}
+    \item  The data consists of time, outcomes and covariates
+      \begin{itemize}
+        \item The state is not observed directly, rather we see one or
+          more outcomes that depend on the underlying state.
+        \item No need for (time1, time2, endpoint) notation
+        \item Data will have missing values, e.g., covariates on the day
+          of death
+      \end{itemize}
+    \item Same box and arrow model for the states, covariates connect to
+      $\lambda$ as before
+    \item Another set of parameters for the arrows that connect state to outcome
+    \item Allows for more episodic data.
+    \item Much of the software is special purpose.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+<<model1cc>>=
+oldpar <- par(mar=c(2.1, 2.1, 2.1, 2.1))
+s2 <- c("A0", "A1", paste0("N", 0:2), "T0", "T1")
+c2 <- matrix(0, 7, 7, dimnames=list(s2, s2))
+c2[1,2] <- c2[3,4] <- c2[4,5] <- c2[6,7]<- 1
+statefig(matrix(c(2,3,2), ncol=1), c2, cex=1)
+par(oldpar)
+@ 
+\end{frame}
+ 
+\begin{frame}
+  \begin{itemize}
+    \item log(measured amyloid binding) $ \sim N(A^-/A^+, \sigma)$
+    \item global memory score $\sim N(\mu, \tau)$ \\
+      $\mu = \beta_0 + \beta_1N + \beta_2\mbox{sex} + \beta_3\mbox{education}$
+    \item $A^-:A^+$ rate depends on APOE status, but on gender
+    \item $N$ transition rates depend on $A$ but not vice-versa
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \myfig{response4b-1}
+\end{frame}
+
+\begin{frame}
+  \myfig{response4b-2}
+\end{frame}
+
+\begin{frame}
+  \myfig{response4b-4}
+\end{frame}
+
+\begin{frame}{HMM}
+  \begin{itemize}
+    \item Very powerful concept
+    \item Downsides
+      \begin{itemize}
+        \item Easy to get carried away
+        \item Computation is \emph{much} harder than a Cox model
+          \begin{itemize}
+            \item good starting estimates
+            \item compute cluster
+            \item patience
+          \end{itemize}
+        \item Few model checking methods
+        \item Long manual
       \end{itemize}
   \end{itemize}
 \end{frame}
